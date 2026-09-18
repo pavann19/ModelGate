@@ -6,10 +6,10 @@
 // verified claim rather than one covered only by a fake.
 //
 // It needs `docker` and `cosign` on PATH, and network access to pull a
-// small base image (alpine) if not already cached locally. It skips
-// cleanly if either binary is missing, the same pattern test/e2e uses for
-// KUBEBUILDER_ASSETS -- this is real, not simulated, verification, and
-// real verification sometimes needs real tools present.
+// small base image (alpine) if not already cached locally. Locally it skips
+// if either binary is missing, the same pattern test/e2e uses for
+// KUBEBUILDER_ASSETS. In CI (CI env var set) a missing tool is a hard
+// failure instead, so the job can never go green without having run it.
 package cosign
 
 import (
@@ -38,6 +38,11 @@ const (
 func requireTool(t *testing.T, name string) {
 	t.Helper()
 	if _, err := exec.LookPath(name); err != nil {
+		// In CI a missing tool means the job is misconfigured; skipping there
+		// would report a green run for a test that never executed.
+		if os.Getenv("CI") != "" {
+			t.Fatalf("%q not found on PATH in CI: refusing to skip (this test must actually run there)", name)
+		}
 		t.Skipf("skipping: %q not found on PATH (this test verifies real cosign behavior and needs it installed)", name)
 	}
 }

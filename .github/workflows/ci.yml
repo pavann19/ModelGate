@@ -73,3 +73,27 @@ jobs:
       - uses: sigstore/cosign-installer@v3
       - name: Verify CosignVerifier against a real signed and a real unsigned image
         run: go test ./test/cosign/... -v -timeout 120s
+
+  # Real kind cluster, real image build, real TLS/RBAC, a real signed and
+  # unsigned image pair on ttl.sh, and assertions on what the live webhook
+  # does. The full output is uploaded as an artifact, so the claim in
+  # docs/DECISIONS.md ("proven against a real kind cluster") is backed by a
+  # captured run, not only prose.
+  kind-smoke:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: modelgate
+      - uses: sigstore/cosign-installer@v3
+      - name: Deploy to kind and assert admission behaviour
+        shell: bash
+        run: bash deploy/kind/smoke.sh 2>&1 | tee kind-smoke-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kind-smoke-output
+          path: kind-smoke-output.txt

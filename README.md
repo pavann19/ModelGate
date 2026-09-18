@@ -72,10 +72,12 @@ CI, not asserted:
   around) and held for 47.6 million fuzz executions over 5 minutes. CI fuzzes continuously on every
   push — see [docs/DECISIONS.md](docs/DECISIONS.md) for the full sequence, including the meta-lesson
   about not treating one green fuzz run as proof.
-- **A measured admission latency benchmark** against a real API server: p50 2.19ms, p99 3.31ms over
-  200 real admission round trips — committed as raw JSON in
-  [bench/results/admission_latency.json](bench/results/admission_latency.json), with the
-  measurement's real limits (single-process envtest, not a multi-node cluster) stated plainly.
+- **A measured admission latency benchmark** against a real API server (envtest: one local
+  kube-apiserver process, no kubelet or kind cluster), 200 real admission round trips. The committed
+  file, [bench/results/admission_latency.json](bench/results/admission_latency.json), was measured on
+  a Windows dev machine: p50 2.24 ms, p99 6.16 ms. CI runs the same benchmark on Linux and uploads its
+  own result as a per-run artifact (not committed); the latest run measured p50 1.94 ms, p99 2.89 ms.
+  Both are single-process, single-run numbers and not comparable to a multi-node cluster.
 - TOCTOU (artifact changes after admission) is documented as a permanent, architectural scope limit
   of an admission-webhook-only design, not a gap that was missed.
 - **Real cosign verification is now closed too**: [test/cosign/cosign_integration_test.go](test/cosign/cosign_integration_test.go)
