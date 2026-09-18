@@ -1,6 +1,7 @@
-// Package pickle detects Python pickle-serialized data by scanning for
-// pickle protocol opcodes, so model artifacts that are secretly pickles
-// (e.g. a .pt file, which is really a zip of pickled tensors) can be rejected.
+// Package pickle detects Python pickle-serialized data by checking for the
+// PROTO opcode pickle protocol 2+ streams always begin with, so model
+// artifacts that are secretly pickles (e.g. a .pt file, which is really a
+// zip of pickled tensors) can be rejected.
 package pickle
 
 import (
@@ -9,77 +10,44 @@ import (
 	"errors"
 )
 
-// pickleOpcodes are byte values that only make sense at the start of a
-// pickle stream or that are strong signals of pickle protocol framing.
-// See https://github.com/python/cpython/blob/main/Lib/pickle.py opcode table.
-var protocolMagic = []byte{0x80} // PROTO opcode, followed by a version byte 0-5
+// maxProtocolVersion is the highest pickle protocol version defined as of
+// this writing (protocols 0-5 exist; see cpython's pickle.HIGHEST_PROTOCOL).
+const maxProtocolVersion = 5
 
-// knownOpcodes is a small set of opcodes that appear in virtually every
-// real pickle stream. Requiring several distinct hits (not just one stray
-// byte) keeps the false-positive rate low on arbitrary binary files.
-var knownOpcodes = map[byte]bool{
-	0x80: true, // PROTO
-	'.':  true, // STOP
-	'}':  true, // EMPTY_DICT
-	']':  true, // EMPTY_LIST
-	')':  true, // EMPTY_TUPLE
-	'q':  true, // BINPUT
-	'r':  true, // LONG_BINPUT
-	'X':  true, // SHORT_BINUNICODE / BINUNICODE
-	'c':  true, // GLOBAL
-	0x95: true, // FRAME
-	0x8c: true, // SHORT_BINUNICODE (protocol 4+)
-	0x94: true, // MEMOIZE
-}
-
-// minOpcodeHitsWithProto is the bar for pickle streams that start with the
-// PROTO opcode (0x80): a real protocol 2+ pickle of virtually any non-empty
-// object clears this easily (FRAME/MEMOIZE/BINPUT alone account for most
-// of it), and starting with 0x80 is itself a strong, specific signal -- no
-// other model format this package has been checked against
-// (safetensors, ONNX, GGUF) begins with that byte.
-const minOpcodeHitsWithProto = 4
-
-// minOpcodeHitsFallback is the (much higher) bar for the fallback path used
-// for protocol 0/1 pickles, which don't start with PROTO. That path's only
-// other signal is "ends with STOP ('.')", which is a 1/256 coincidence on
-// arbitrary bytes -- and fuzzing found that a legitimate safetensors file
-// (whose JSON header routinely contains two or more '}' from its per-tensor
-// objects, itself contributing to the opcode count) combined with tensor
-// data that happens to end in 0x2E reached the old 4-hit bar purely by
-// chance. Raising this fallback path's bar to 8 keeps PROTO-prefixed
-// (protocol 2+) detection exactly as sensitive while cutting that
-// coincidence rate by roughly 4000x, at the cost of missing some very
-// short/trivial protocol-0/1 pickles -- an acceptable trade for real model
-// artifacts, which are never that trivial. See
-// internal/pickle/fuzz_test.go for the fuzz harness that found this.
-const minOpcodeHitsFallback = 8
-
-// IsPickle reports whether data looks like a raw Python pickle stream.
+// IsPickle reports whether data is a pickle protocol 2+ stream: it must
+// start with the PROTO opcode (0x80) followed by a valid protocol version
+// byte (0-5).
+//
+// This package previously tried to also catch protocol 0/1 pickles (which
+// don't have a PROTO prefix) and used opcode-density heuristics -- "does
+// this data contain several of a small set of known opcode byte values" --
+// for both cases. Fuzzing (internal/pickle/fuzz_test.go) repeatedly broke
+// that approach: a coverage-guided fuzzer can trivially construct a short
+// "alphabet soup" input containing every tracked opcode byte value as a
+// literal, deliberately placed byte, defeating any distinct-count or
+// occurrence-count threshold no matter how high it's raised -- three
+// separate threshold increases were each fuzzed out within the same
+// session (see the git history and the committed regression seeds in
+// internal/pickle/testdata/fuzz/). A "does this data contain matching
+// bytes anywhere" check can never be robust against an adversary (or a
+// fuzzer) who can choose the bytes; only a check anchored to a specific,
+// unambiguous position is.
+//
+// PROTO + a valid version byte at position 0 is exactly that: every
+// pickle.dump() call from any modern Python (protocol 2 has been the
+// default or higher since Python 3.0, and torch.save/model serialization
+// tooling always goes through pickle.dump) produces a stream starting
+// with these exact two bytes, and no other model format this package has
+// been checked against (safetensors, ONNX, GGUF) can produce that prefix
+// by coincidence -- their own magic bytes/framing occupy that position.
+// Protocol 0/1 pickles (no PROTO prefix) are legacy, not what any current
+// tooling produces by default, and are now an explicit, accepted gap
+// rather than a heuristic that looked like coverage but wasn't robust.
 func IsPickle(data []byte) bool {
 	if len(data) < 2 {
 		return false
 	}
-
-	minHits := minOpcodeHitsFallback
-	if bytes.HasPrefix(data, protocolMagic) {
-		minHits = minOpcodeHitsWithProto
-	} else if data[len(data)-1] != '.' {
-		// Some pickles omit PROTO (protocol 0/1) but still end in STOP
-		// ('.'). Without either signal, this isn't plausibly a pickle.
-		return false
-	}
-
-	hits := 0
-	for _, b := range data {
-		if knownOpcodes[b] {
-			hits++
-			if hits >= minHits {
-				return true
-			}
-		}
-	}
-	return false
+	return data[0] == 0x80 && data[1] <= maxProtocolVersion
 }
 
 // IsPyTorchPickle reports whether data is a PyTorch .pt/.pth file using the

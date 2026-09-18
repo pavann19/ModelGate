@@ -116,7 +116,7 @@ hash at the moment this pod was admitted," not "the artifact the running pod's p
 guaranteed to match at every later moment." That is a real, permanent limitation of an
 admission-webhook-only architecture, stated plainly rather than glossed over.
 
-## M3 pickle false-positive measurement: fuzzing found a real bug, and it was fixed
+## M3 pickle false-positive measurement: three threshold fixes failed in CI before the real fix
 
 The MVP's `docs/DECISIONS.md` entry on pickle detection promised this measurement for M3 rather than
 asserting a false-positive rate with no evidence. It was done via Go's native fuzzer
@@ -126,36 +126,63 @@ hand-curated corpus of downloaded real model files — this repo has no practica
 store real multi-hundred-MB model weights, and fuzzing the actual byte *shapes* those formats use is
 a more rigorous way to explore the false-positive space than a handful of static fixtures anyway.
 
-**What it found, within seconds of fuzzing:** a legitimate safetensors file could be misclassified
-as a pickle. The root cause: `.` (pickle's STOP opcode) was itself one of the counted "opcode hits,"
-and a real safetensors JSON header routinely contains two or more `}` characters (one per tensor
-entry's own JSON object, plus the outer object). A safetensors file whose raw tensor byte data
-happens to end in `0x2E` (`.`) — a 1-in-256 coincidence, deterministic per file — combined with those
-two `}` hits, reached the old 4-hit threshold entirely by chance, with nothing pickle-like about the
-file at all. This is a real defect: a legitimate model artifact could be wrongly rejected as a
-"pickle," not a false-negative security gap but a false-positive availability/correctness bug.
+**Round 1 (caught locally):** the original heuristic counted total occurrences of any byte in a
+fixed 12-byte "known opcode" set anywhere in the buffer. A legitimate safetensors file could be
+misclassified: `.` (STOP) was itself a counted hit, and a real safetensors JSON header routinely has
+two or more `}` (one per tensor's own JSON object). Tensor data ending in `0x2E` (`.`) — a 1-in-256
+per-file coincidence — combined with the header's `}` hits reached the 4-hit threshold by pure
+chance. **Fix attempted:** raise the non-`PROTO`-prefixed ("fallback") path's threshold to 8. Looked
+sufficient in a 30s local fuzz run and shipped.
 
-**The fix:** `internal/pickle/pickle.go`'s opcode-hit threshold is now two-tiered.
-`minOpcodeHitsWithProto = 4` (unchanged) applies when the input starts with the `PROTO` opcode
-(`0x80`) — a real protocol-2+ pickle of any non-trivial object clears 4 hits easily, and starting
-with `0x80` is itself a strong, specific signal (no format checked here — safetensors, ONNX, GGUF —
-begins with that byte). `minOpcodeHitsFallback = 8` applies to the weaker fallback path (no `PROTO`
-prefix, only "ends with `STOP`"), cutting the coincidence rate by roughly 4000x. The originally
-found failing input (safetensors-framed, minimized by the fuzzer to a 2-byte payload `"X."`) is
-committed as a permanent regression seed in `fuzz_test.go`.
+**Round 2 (caught by CI, not locally — this is the point of running fuzzing continuously, not once):**
+the *next* push's CI `fuzz-pickle` job failed within 11 seconds on a new input: `"XXXXX."` (five `X`
+= `SHORT_BINUNICODE` opcode, repeated, plus `.`) reached the raised 8-hit bar purely through
+*repetition* of one single opcode byte — the threshold counted occurrences, not distinct opcode
+types, so five copies of the same byte counted as five separate "hits." **Fix attempted:** count
+*distinct* opcode bytes seen instead of total occurrences (a real pickle stream is built from several
+genuinely different opcodes in sequence; coincidental matches tend to repeat one byte). Verified
+against both known failures, shipped.
 
-**Verified:** 44,339 fuzz executions post-fix with zero new failures (`go test ./internal/pickle/
--fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=30s`), plus all pre-existing pickle/safetensors
-unit tests still pass. CI runs a shorter (30s) fuzz pass on every push as its own job
-(`fuzz-pickle` in `.github/workflows/ci.yml`) — not exhaustive, but continuous, real fuzzing rather
-than a one-time check.
+**Round 3 (caught locally within seconds of extended fuzzing, before it could reach CI):** a fuzz run
+found `"Xc)r\x95\x94."` — seven bytes, each one a *different* member of the tracked opcode set,
+concatenated with no operand data between them. This is the moment the actual root cause became
+clear: **the heuristic — "does this blob contain matching bytes anywhere, in any order, for any
+reason" — is not a fixable threshold problem.** A coverage-guided fuzzer can always construct a
+minimal "alphabet soup" input containing literally every tracked opcode byte as a deliberate,
+isolated byte, defeating *any* distinct-count or occurrence-count bar no matter how high it's set,
+because the check never required the bytes to form a coherent, ordered *stream* — only to be present
+somewhere. Raising the bar a fourth time would have shipped a fourth bug; the actual fix had to
+change what the check requires, not just how many hits it needs.
 
-**Accepted trade-off, stated plainly:** raising the fallback path's bar to 8 hits means a very
-short/trivial protocol-0/1 pickle (an old pickle protocol, rare for real model artifacts, which are
-never that trivial) might now go undetected if it doesn't start with `PROTO` and doesn't reach 8
-opcode hits. This was chosen deliberately over the alternative (excluding `.` from the shared
-opcode set), since it fixes the coincidence rate by a much larger factor for the case that actually
-matters: real safetensors files, which are the artifact format ModelGate is meant to admit.
+**The actual fix:** stop trying to detect pickle-ness from opcode *density* anywhere in the buffer,
+and check the one signal that is genuinely unambiguous and position-anchored: pickle protocol 2+
+streams — which is what every modern `pickle.dump()`/`torch.save()` call produces by default —
+*always* begin with the `PROTO` opcode (`0x80`) followed by a valid protocol version byte (0-5), at
+byte offset 0, full stop. `IsPickle` is now exactly `data[0] == 0x80 && data[1] <= 5`. No format
+checked here (safetensors' 8-byte length prefix, ONNX's protobuf field tag, GGUF's `"GGUF"` magic)
+can produce that specific two-byte prefix by coincidence, and — critically, unlike the byte-anywhere
+heuristic — a fuzzer cannot "construct" a false match by placing a few chosen bytes somewhere in an
+otherwise-arbitrary buffer, because the check only ever looks at position 0.
+
+**Accepted trade-off, now much narrower and explicit:** protocol 0/1 pickles (no `PROTO` prefix) are
+no longer detected at all. This is a real, named gap, not a hidden one — but protocol 0/1 is legacy;
+no current Python tooling produces it by default, and it was never reliably caught by the old
+heuristic either (three of the tracked "opcode" bytes were protocol-4-only and could never appear in
+a real protocol-0/1 stream in the first place, so the old fallback path's real-world detection power
+was already close to nothing — it just happened to also be a source of false positives).
+
+**Verified, this time with a run long enough to mean something:** 47.6 million fuzz executions over
+5 minutes (`go test ./internal/pickle/ -fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=300s`) with
+zero failures, plus all 4 committed regression seeds (one per round above) and all pre-existing
+pickle/safetensors unit tests passing. CI runs a 30s fuzz pass on every push as its own job
+(`fuzz-pickle`) — continuous, not a one-time check, which is exactly what caught round 2 before it
+reached a human reading the diff.
+
+**The honest meta-lesson, worth stating for its own sake:** the first "fix" was verified against 30
+seconds of fuzzing and looked done. It wasn't — CI caught it in 11 seconds on the very next run.
+"Green once" and "actually fixed" are not the same claim, and the gap between them here was closed
+only by treating a passing fuzz run as a data point, not a proof, and continuing to fuzz harder
+before trusting the result.
 
 ## M3 admission latency benchmark
 
@@ -320,7 +347,7 @@ an already-pinned key.
 
 ## Pickle detection is opcode-based, not extension-based
 
-`internal/pickle` scans for actual pickle protocol opcodes (`PROTO`, `STOP`, `MEMOIZE`, etc.) rather
+`internal/pickle` checks for the pickle protocol's own `PROTO` opcode at a fixed position, rather
 than trusting a `.pkl`/`.pt` file extension.
 
 **Why:** an attacker controls the annotation/filename; a `.safetensors`-named file could contain a
@@ -328,10 +355,13 @@ pickle payload, and a legitimately-named `.pt` file is frequently a zip archive 
 pickled tensors (PyTorch's default save format), not a raw pickle stream. `IsPyTorchPickle` checks
 both the raw-opcode case and the zip-with-`data.pkl`-entry case.
 
-**Resolved in M3, not just documented:** the opcode heuristic was fuzzed against byte-accurate
-safetensors/ONNX/GGUF framing (see "M3 pickle false-positive measurement" below), which found and
-fixed a real false-positive rather than only measuring one. The two-tiered threshold described
-there is the current, fuzzed-and-verified state of this heuristic.
+**Resolved in M3, not just documented — and not on the first, second, or third attempt.** The
+original heuristic scanned for opcode *density* anywhere in the buffer; fuzzing against byte-
+accurate safetensors/ONNX/GGUF framing broke three successive threshold-based fixes in a row before
+landing on the actual robust design: checking for the `PROTO` opcode at a fixed, unambiguous
+position instead of counting byte matches anywhere. See "M3 pickle false-positive measurement" below
+for the full sequence of what was tried, what CI caught, and why "anywhere in the buffer" checks are
+inherently unfixable by raising a threshold.
 
 ## `kind` cluster deployment: done, and it found four real bugs envtest couldn't
 

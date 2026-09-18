@@ -29,8 +29,10 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
 ## Layout
 
 - `api/v1alpha1` — the `ModelGatePolicy` CRD types.
-- `internal/pickle` — opcode-based pickle detector (raw pickle streams and PyTorch zip archives),
-  fuzz-tested against safetensors/ONNX/GGUF-shaped inputs (`fuzz_test.go`).
+- `internal/pickle` — pickle detector: checks for the `PROTO` opcode at a fixed position (raw
+  pickle streams and PyTorch zip archives), fuzz-tested against safetensors/ONNX/GGUF-shaped
+  inputs (`fuzz_test.go`) — see [docs/DECISIONS.md](docs/DECISIONS.md) for why a byte-density
+  heuristic was tried first and broke three times under fuzzing before landing on this design.
 - `internal/artifact` — safetensors header/hash validation.
 - `internal/policy` — `Resolver`, which looks up the `ModelGatePolicy` for a pod's namespace.
 - `internal/webhook` — the admission `Handler` and cosign verifier.
@@ -62,9 +64,14 @@ CI, not asserted:
   via `kubectl set image`, and `kubectl debug`'s ephemeral-container subresource), verified them
   empirically against a real API server, and fixed both by watching `UPDATE` and the
   `pods/ephemeralcontainers` subresource — not just documenting them as accepted limitations.
-- **Fuzzing the pickle detector found and fixed a real false-positive** (a legitimate safetensors
-  file could be misclassified as a pickle by coincidence); 44,000+ fuzz executions post-fix with no
-  new failures, and CI fuzzes continuously on every push.
+- **Fuzzing the pickle detector found and fixed a real false-positive — three times before it
+  actually stuck.** Two threshold-based fixes each looked done after a short local fuzz run and
+  were each broken by the next round of fuzzing (one caught by CI itself, on the very next push).
+  The third fix changed the detection strategy entirely (a fixed-position `PROTO`-opcode check
+  instead of counting matching bytes anywhere in the buffer, which a fuzzer can always construct
+  around) and held for 47.6 million fuzz executions over 5 minutes. CI fuzzes continuously on every
+  push — see [docs/DECISIONS.md](docs/DECISIONS.md) for the full sequence, including the meta-lesson
+  about not treating one green fuzz run as proof.
 - **A measured admission latency benchmark** against a real API server: p50 2.19ms, p99 3.31ms over
   200 real admission round trips — committed as raw JSON in
   [bench/results/admission_latency.json](bench/results/admission_latency.json), with the
