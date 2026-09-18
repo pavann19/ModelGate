@@ -40,6 +40,14 @@ What is actually true right now, so nothing here is overclaimed:
     installed (`CRDDirectoryPaths`) and three real `ModelGatePolicy` objects seeded across three
     namespaces (a normal policy, an exempt one, and a namespace with no policy at all), proving
     policy CRUD and namespace-based selection against a real API server, not just the fake client.
+- **M2 is done**: `deploy/manifests/validatingwebhookconfiguration.yaml` exposes `failurePolicy`
+  (`Fail` or `Ignore`) as the fail-closed/fail-open switch for when the webhook itself is
+  unreachable, and both modes are measured for real in
+  `test/e2e/failurepolicy/failure_policy_test.go`: each test boots a real envtest environment,
+  starts a real ModelGate webhook server, creates a pod (proving the webhook is up), **kills the
+  webhook mid-test** by canceling the manager's context and waiting for the TLS port to actually
+  stop accepting connections, then creates a second pod. With `failurePolicy: Fail` the second pod
+  is denied; with `failurePolicy: Ignore` it is admitted. Both pass in CI as their own job.
 
 ## `ModelGatePolicy` fails closed when a namespace has no policy
 
@@ -56,6 +64,52 @@ about a *missing policy object* while the webhook is healthy and reachable.
 then create its policy) with a hard failure window in between if a pod lands there first. That is
 treated as acceptable for a security-boundary webhook; a convenience default policy could be added
 later but would need to be a deliberate, documented decision, not an accidental fallback.
+
+## Fail-open vs. fail-closed: `failurePolicy: Fail` is the default, and both modes are measured
+
+`deploy/manifests/validatingwebhookconfiguration.yaml` ships with `failurePolicy: Fail`.
+
+**What "the webhook is unreachable" actually means:** kube-apiserver calls the webhook's HTTPS
+endpoint synchronously on every matching `Pod` create/update, with a timeout (`timeoutSeconds: 5`
+here). "Unreachable" covers the webhook Deployment being scaled to zero, crash-looping, network-
+partitioned from the API server, or simply too slow to answer within the timeout. `failurePolicy`
+is kube-apiserver's own field — ModelGate doesn't implement this behavior itself, it only chooses
+the value, so "implementing both modes" means proving the value actually does what it claims, not
+writing failure-detection logic in the handler.
+
+**The trade-off, stated plainly:**
+- `Fail` (chosen default): if ModelGate is down, **every** pod create in the cluster is rejected
+  until it comes back. This is secure by construction — an attacker (or a bug) taking down the
+  webhook cannot use that outage to slip an unsigned image or a pickle artifact past admission —
+  but it makes ModelGate itself a single point of failure for cluster scheduling. A bad rollout of
+  the webhook, or an unrelated outage in whatever it depends on (registry reachability for cosign,
+  in particular), can freeze all deployments cluster-wide.
+- `Ignore`: if ModelGate is down, every pod is admitted as if no policy existed at all. The cluster
+  stays available, but for the duration of the outage every check this webhook exists for —
+  signature verification, pickle detection, host-access denial — is silently not happening. An
+  attacker who can trigger or wait out a webhook outage (e.g. by exhausting its resources) gets a
+  free pass for exactly that window.
+
+**Why `Fail` is the default here:** ModelGate's stated purpose is a supply-chain security boundary,
+not a best-effort advisory check. A security control that silently disables itself under load or
+during an incident is a well-known real-world failure pattern (this is the same shape of trade-off
+as, e.g., a WAF or an mTLS sidecar failing open) — the failure mode should be loud and blocking, not
+quiet and permissive. `Fail` also composes with the M1 decision to fail closed when a namespace has
+no policy: both defaults agree that "ModelGate can't confirm this is safe" should block, not admit.
+
+**Why this is still a real, live trade-off, not a settled one:** a cluster operator who cannot
+tolerate ModelGate becoming a scheduling-blocking dependency (e.g. no on-call coverage for it, or a
+cluster where availability is contractually prioritized over this particular control) has a
+legitimate reason to choose `Ignore` instead. That's exactly why it's a per-cluster manifest value
+and a namespace-level `exempt` escape hatch exists (M1) rather than either being hardcoded — the
+right answer depends on what the operator is actually optimizing for, and ModelGate's job is to
+make that choice explicit and measured, not to make it for them.
+
+**What is and isn't measured:** `test/e2e/failurepolicy` proves the *binary* behavior (denied vs.
+admitted) for both settings against a real API server, by actually killing a running webhook
+process mid-test. It does not yet measure graceful-degradation behavior under partial failure
+(e.g. the webhook responding slowly but not down, right up against `timeoutSeconds`) — that would
+be a natural extension of the M3 latency benchmark work, not part of M2's stated scope.
 
 ## Policy is read via the API server directly, not the manager's cache
 
@@ -110,8 +164,6 @@ false-positive rate. That measurement is scoped for M3 alongside the adversarial
 
 ## Deferred (explicitly out of scope so far, tracked for later milestones)
 
-- Fail-open vs. fail-closed behavior under webhook unavailability — M2. (Note: this is distinct
-  from the "no policy for this namespace" fail-closed behavior added in M1, above.)
 - Adversarial bypass suite (image swap post-admission, ephemeral container swap timing, artifact
   TOCTOU) and measured admission latency — M3.
 - A reconciling controller for `ModelGatePolicy` (e.g. validating `cosignPublicKeyPEM` is

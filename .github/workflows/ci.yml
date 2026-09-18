@@ -15,7 +15,9 @@ jobs:
           go-version: '1.24'
       - run: go build ./...
       - run: go vet ./...
-      - run: go test ./... -v -race -coverprofile=coverage.out
+      # test/e2e/... requires KUBEBUILDER_ASSETS (a real kube-apiserver +
+      # etcd) -- that's the envtest job below, not this one.
+      - run: go test $(go list ./... | grep -v '/test/e2e') -v -race -coverprofile=coverage.out
       - uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -34,7 +36,7 @@ jobs:
       - name: Download envtest binaries (kube-apiserver, etcd)
         id: envtest-assets
         run: echo "path=$(setup-envtest use 1.31.0 -p path)" >> "$GITHUB_OUTPUT"
-      - name: Run envtest suite against a real API server
+      - name: Run envtest suites against a real API server
         env:
           KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
         run: go test ./test/e2e/... -v -timeout 120s

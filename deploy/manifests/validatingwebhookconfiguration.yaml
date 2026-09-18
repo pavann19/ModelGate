@@ -1,0 +1,37 @@
+# The ModelGate ValidatingWebhookConfiguration for a real cluster.
+#
+# failurePolicy is the fail-open/fail-closed switch measured in
+# test/e2e/failurepolicy: Fail rejects every pod create/update while the
+# webhook is unreachable (safe, but an outage of ModelGate itself blocks all
+# scheduling); Ignore admits everything while unreachable (available, but an
+# outage silently disables every check this webhook exists to enforce). See
+# docs/DECISIONS.md for the trade-off and why Fail is the default here.
+#
+# This manifest is not yet wired into a full kind/cluster deployment (no
+# Service/Deployment/cert provisioning alongside it) -- see docs/DECISIONS.md
+# for why that was intentionally deferred. It exists so failurePolicy has one
+# concrete, documented place to be set for a real installation, and so its
+# shape matches exactly what test/e2e/failurepolicy's fixtures assert against.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: modelgate
+webhooks:
+  - name: validate-pods.modelgate.dev
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    failurePolicy: Fail # or Ignore -- see the comment above before changing this
+    timeoutSeconds: 5
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+    clientConfig:
+      service:
+        name: modelgate-webhook
+        namespace: modelgate-system
+        path: /validate-pods
+      # caBundle: <injected by your certificate provisioning mechanism,
+      # e.g. cert-manager's CA injector -- not yet wired up, see
+      # docs/DECISIONS.md>

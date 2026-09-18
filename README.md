@@ -41,10 +41,14 @@ go test ./...
 
 ## Status
 
-MVP + M1 (the `ModelGatePolicy` CRD) are done. Admission logic, unit tests, resolver tests against
-a fake client, and an `envtest` suite (real `kube-apiserver` + `etcd`, the CRD installed, a real
-`ValidatingWebhookConfiguration`, real TLS, three namespaces with different policies) all pass and
-run in CI — see [test/e2e/envtest_test.go](test/e2e/envtest_test.go). Real cosign signature
-verification against an actual signed/unsigned image pair, a `kind`-cluster deployment for extra
-realism, and M2 (fail-open/fail-closed on webhook unavailability) are the next gaps — see
-[docs/DECISIONS.md](docs/DECISIONS.md) for exactly what's verified so far.
+MVP, M1 (the `ModelGatePolicy` CRD), and M2 (fail-open/fail-closed) are done. Admission logic, unit
+tests, resolver tests against a fake client, an `envtest` suite (real `kube-apiserver` + `etcd`,
+the CRD installed, a real `ValidatingWebhookConfiguration`, real TLS, three namespaces with
+different policies), and `failurePolicy: Fail` vs. `Ignore` tests that actually kill a running
+webhook process mid-test all pass and run in CI — see
+[test/e2e/envtest_test.go](test/e2e/envtest_test.go) and
+[test/e2e/failurepolicy/failure_policy_test.go](test/e2e/failurepolicy/failure_policy_test.go).
+Real cosign signature verification against an actual signed/unsigned image pair, and a
+`kind`-cluster deployment for extra realism, are the next gaps — see
+[docs/DECISIONS.md](docs/DECISIONS.md) for exactly what's verified so far, and for the fail-open
+vs. fail-closed trade-off write-up.
