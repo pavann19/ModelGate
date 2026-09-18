@@ -54,8 +54,8 @@ go test ./...
 
 ## Status
 
-ModelGate's build plan (MVP through M3) is complete and resume-ready. Highlights, all verified in
-CI, not asserted:
+ModelGate's build plan (MVP through M3) is implemented. Each highlight below names the test or CI
+job that backs it; the known gaps are listed at the end.
 
 - MVP + M1 + M2: admission logic, the `ModelGatePolicy` CRD, per-namespace policy selection, and
   measured fail-open/fail-closed behavior — see prior sections of
@@ -89,9 +89,13 @@ CI, not asserted:
   (only documented as a requirement, never implemented), a cluster-wide webhook with no
   `namespaceSelector` would have deadlocked the cluster's own control plane, the webhook's RBAC was
   never defined, and the default 5s timeout was too short for cosign's real network round trip
-  (raised to 15s, re-verified). All five fixtures — signed image admitted and actually run,
-  unsigned/privileged/hostNetwork/hostPath all rejected with real error messages — were proven live
-  against the running cluster. See [docs/DECISIONS.md](docs/DECISIONS.md) for the full write-up.
+  (raised to 15s, re-verified). `deploy/kind/smoke.sh` now runs in CI (`kind-smoke` job) on a fresh
+  kind cluster: the signed pod is admitted and the unsigned, privileged, hostNetwork and hostPath
+  pods are each denied by the webhook, and the captured output is uploaded as the
+  `kind-smoke-output` artifact. It needs outbound access to `ttl.sh` (a public registry). See
+  [docs/DECISIONS.md](docs/DECISIONS.md) for the full write-up.
 
-Every gap from the original build plan is now closed. See [docs/DECISIONS.md](docs/DECISIONS.md)
-for the complete, itemized status and every trade-off write-up.
+**Known gaps** (details in [docs/DECISIONS.md](docs/DECISIONS.md)): pickle protocol 0/1 streams
+(no `PROTO` prefix) are not detected; TOCTOU after admission is out of scope for an admission
+webhook; cosign verification skips the transparency log by design (the pinned key is the trust
+anchor); the latency numbers are single-process envtest runs, not a multi-node cluster.

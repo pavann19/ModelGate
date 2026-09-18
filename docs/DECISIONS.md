@@ -409,15 +409,21 @@ test) could never surface:**
    already named in the abstract: a slower check pipeline is now a real cost of `UPDATE`-watching
    and real cosign verification together, not just a theoretical one.
 
-**Why this isn't wired into automated CI the way envtest is:** it needs a real, publicly reachable
-signed/unsigned image pair, which means either pushing to a public ephemeral registry on every CI
-run (extra external dependency, flakiness risk, and it leaves image litter on a third-party service)
-or standing up an in-cluster registry with real TLS reachable from the pod network (real additional
-infrastructure). Given `test/cosign` already proves real cosign verification in isolation and
-`test/e2e` already proves the real admission path against a real API server, this kind cluster run
-is treated as a manual, periodic "does it actually still work end-to-end" check — its value was
-already delivered (the four bugs above), and repeating it doesn't need to happen on every commit to
-keep that value.
+**This is now backed by a CI artifact, not only prose.** `deploy/kind/smoke.sh` runs the whole flow
+(build the image, load it into kind, `deploy.sh`, push and sign a real image pair on ttl.sh, apply a
+policy, then five fixtures) and exits non-zero unless the signed pod is admitted and the unsigned,
+privileged, hostNetwork and hostPath pods are each denied *by the ModelGate webhook* (it checks the
+denial message names the webhook and the specific reason, so an unrelated API error cannot pass).
+The `kind-smoke` job in `.github/workflows/ci.yml` runs it on a fresh kind cluster on every push
+and uploads the full output as the `kind-smoke-output` artifact. It passed on its first CI run
+(run 35357672956); the artifact shows all six `SMOKE PASS` lines.
+
+**Trade-offs of that job, stated plainly:** it pushes two throwaway images to `ttl.sh`, a free public
+registry, on every run, so it depends on that service being up and on outbound network access, and it
+is the slowest job (about 2.5 minutes). The earlier version of this section argued against CI for
+exactly those reasons; running it anyway was judged better than leaving the flagship deployment
+claim without a repeatable check. If ttl.sh flakiness becomes a problem, the alternative is an
+in-cluster registry with TLS, which is more setup.
 
 ## Deferred (explicitly out of scope so far, tracked for future work)
 
