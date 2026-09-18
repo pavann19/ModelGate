@@ -17,7 +17,9 @@ jobs:
       - run: go vet ./...
       # test/e2e/... and bench/... require KUBEBUILDER_ASSETS (a real
       # kube-apiserver + etcd) -- that's the envtest job below, not this one.
-      - run: go test $(go list ./... | grep -vE '/(test/e2e|bench)') -v -race -coverprofile=coverage.out
+      # test/cosign/... requires the real cosign binary -- that's the
+      # cosign-integration job below, not this one.
+      - run: go test $(go list ./... | grep -vE '/(test/e2e|bench|test/cosign)') -v -race -coverprofile=coverage.out
       - uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -59,3 +61,15 @@ jobs:
           go-version: '1.24'
       - name: Fuzz the pickle detector against safetensors/ONNX/GGUF-shaped inputs
         run: go test ./internal/pickle/ -fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=30s
+
+  cosign-integration:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: sigstore/cosign-installer@v3
+      - name: Verify CosignVerifier against a real signed and a real unsigned image
+        run: go test ./test/cosign/... -v -timeout 120s

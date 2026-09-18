@@ -39,6 +39,7 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
 - `test/e2e` — envtest suites: CRD/policy selection, an adversarial bypass suite
   (`adversarial_bypass_test.go`), and `test/e2e/failurepolicy` for fail-open/fail-closed.
 - `bench` — the admission latency benchmark and its committed, measured results.
+- `test/cosign` — real `cosign` sign/verify integration test against a local registry.
 
 ## Running tests
 
@@ -67,8 +68,11 @@ CI, not asserted:
   measurement's real limits (single-process envtest, not a multi-node cluster) stated plainly.
 - TOCTOU (artifact changes after admission) is documented as a permanent, architectural scope limit
   of an admission-webhook-only design, not a gap that was missed.
+- **Real cosign verification is now closed too**: [test/cosign/cosign_integration_test.go](test/cosign/cosign_integration_test.go)
+  runs the real `cosign` binary against a real local registry, a real signed image, and a real
+  (genuinely different, unsigned) image, calling the exact `CosignVerifier` type wired into
+  production — not a fake. Runs as its own CI job.
 
-Real cosign signature verification against an actual signed/unsigned image pair, and a
-`kind`-cluster deployment for extra realism, remain open — see
+Only a `kind`-cluster deployment for extra realism beyond envtest remains open — see
 [docs/DECISIONS.md](docs/DECISIONS.md) for the complete, itemized status and every trade-off
 write-up.

@@ -15,8 +15,9 @@ What is actually true right now, so nothing here is overclaimed:
   model artifact admitted, unlisted artifact rejected) pass against the real API server, and this
   now runs as its own job in CI (`.github/workflows/ci.yml`).
   - This proves the webhook *wiring* — TLS, admission review round-trip, rule routing to
-    `Handle()` — works end-to-end. It still uses a fake `ImageVerifier`/`ArtifactFetcher` (see
-    below), so it does not prove real cosign verification.
+    `Handle()` — works end-to-end. It still uses a fake `ImageVerifier`/`ArtifactFetcher`, so it
+    does not by itself prove real cosign verification — see "Real cosign verification" below for
+    where that gap was closed.
   - A `kind` cluster (a full kubelet, real container runtime, a deployed webhook Docker image)
     is a heavier, more realistic environment than envtest but was not built, since the plan's own
     exit criterion names envtest as the bar and envtest already exercises the actual
@@ -24,11 +25,15 @@ What is actually true right now, so nothing here is overclaimed:
     deployment (Dockerfile push into kind, Service, generated webhook TLS via cert-manager or a
     self-signed job, RBAC) remains a reasonable follow-up for extra realism, not a gap in what the
     plan requires.
-- `cosign` signature verification shells out to the real `cosign` CLI (`internal/webhook/verifier.go`);
-  it has not yet been exercised against a real signed/unsigned image pair — only against a fake
-  `ImageVerifier` in both the unit tests and the envtest suite. Verifying it against a real
-  `cosign sign`/`cosign verify` round trip (e.g. a local registry + generated keypair in CI) is
-  the next gap to close before "rejects unsigned images" is a fully end-to-end verified claim.
+- **Real cosign verification is now done.** `test/cosign/cosign_integration_test.go` runs the real
+  `cosign` binary end to end: it starts a real local OCI registry (`registry:2` in Docker), pushes
+  two genuinely different images (different digests, not just different tags of the same content),
+  signs only one of them with a freshly generated cosign keypair, and calls
+  `internal/webhook.CosignVerifier.VerifySignature` — the exact type wired into production, not a
+  fake — against both. It passes: the signed image verifies, the unsigned one is rejected. This
+  runs as its own CI job (`cosign-integration` in `.github/workflows/ci.yml`, using
+  `sigstore/cosign-installer`) and skips cleanly (not a failure) if `docker`/`cosign` aren't on
+  `PATH`, the same pattern `test/e2e` uses for `KUBEBUILDER_ASSETS`.
 - **M1 is done**: the three MVP checks now live behind a `ModelGatePolicy` CRD
   (`api/v1alpha1/modelgatepolicy_types.go`), one instance per namespace, with an explicit
   `exempt`/`exemptionReason` field. `internal/policy.Resolver` looks it up per admission request
@@ -298,6 +303,24 @@ small and matches how cosign is normally invoked in CI/CD pipelines, at the cost
 **Revisit if:** a future milestone needs keyless verification or transparency-log inspection, where
 the CLI's output parsing would become more fragile than using the library directly.
 
+## Skipping cosign's transparency-log (Rekor) check, deliberately
+
+`CosignVerifier.VerifySignature` always passes `--insecure-ignore-tlog=true` to `cosign verify`.
+
+**Why:** cosign's default behavior checks a signature against a transparency log (Rekor) in
+addition to the public key, mainly to detect key compromise for *keyless* (Fulcio-based) signing.
+ModelGate's trust anchor is the pinned public key itself, per the build plan's own stated MVP scope
+("start with one hardcoded key; a real trust policy comes later") — Rekor adds little for a
+statically pinned key an operator already controls. Requiring a reachable Rekor instance (public
+sigstore or self-hosted) on *every single pod admission* would add a new external network
+dependency to the hot admission path, and a new availability failure mode layered on top of the one
+already measured in M2 (see the fail-open/fail-closed section above) — a real, live-only-network
+requirement traded for tamper-evidence value that mostly doesn't apply to this trust model.
+
+**Revisit if:** a future milestone adds keyless/Fulcio signing support, where Rekor becomes the
+primary way to detect a compromised signing identity rather than an optional extra layer on top of
+an already-pinned key.
+
 ## Pickle detection is opcode-based, not extension-based
 
 `internal/pickle` scans for actual pickle protocol opcodes (`PROTO`, `STOP`, `MEMOIZE`, etc.) rather
@@ -315,8 +338,6 @@ there is the current, fuzzed-and-verified state of this heuristic.
 
 ## Deferred (explicitly out of scope so far, tracked for future work)
 
-- Real `cosign` signature verification against an actual signed/unsigned image pair (unit and
-  envtest suites still use a fake `ImageVerifier` — see the MVP status entry above).
 - A `kind` cluster deployment (Docker image, Service, cert provisioning, RBAC) for extra realism
   beyond envtest — not required by any milestone's stated exit criterion so far, but would let a
   future latency benchmark measure real multi-node/concurrent-client behavior (see "M3 admission

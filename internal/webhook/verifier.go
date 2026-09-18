@@ -24,6 +24,15 @@ type CosignVerifier struct{}
 
 // VerifySignature writes publicKeyPEM to a temp file and runs
 // `cosign verify --key <path> <image>`, returning nil only if cosign exits 0.
+//
+// It passes --insecure-ignore-tlog=true, skipping cosign's transparency-log
+// (Rekor) check: the pinned public key is this project's trust anchor (per
+// the build plan's own MVP scope -- "start with one hardcoded key"), not
+// Rekor, which mainly exists to detect key compromise for keyless/Fulcio
+// signing. Requiring a reachable Rekor instance on every single admission
+// request would add a new external dependency to the hot admission path,
+// and a new availability failure mode on top of the one already measured
+// in M2 (see docs/DECISIONS.md) -- a deliberate choice, not an oversight.
 func (CosignVerifier) VerifySignature(ctx context.Context, image, publicKeyPEM string) error {
 	keyPath, cleanup, err := writeTempKey(publicKeyPEM)
 	if err != nil {
@@ -31,7 +40,7 @@ func (CosignVerifier) VerifySignature(ctx context.Context, image, publicKeyPEM s
 	}
 	defer cleanup()
 
-	cmd := exec.CommandContext(ctx, "cosign", "verify", "--key", keyPath, image)
+	cmd := exec.CommandContext(ctx, "cosign", "verify", "--key", keyPath, "--insecure-ignore-tlog=true", image)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
