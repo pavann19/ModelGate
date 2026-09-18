@@ -3,3 +3,6 @@
 coverage.out
 .idea/
 .vscode/
+
+# Generated per-cluster, never committed: see deploy/kind/deploy.sh.
+deploy/kind/certs/

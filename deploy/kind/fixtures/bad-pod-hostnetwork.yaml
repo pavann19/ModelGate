@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-hostnetwork
+  namespace: default
+spec:
+  hostNetwork: true
+  containers:
+    - name: main
+      image: ${SIGNED_IMAGE}

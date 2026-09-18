@@ -18,13 +18,10 @@ What is actually true right now, so nothing here is overclaimed:
     `Handle()` — works end-to-end. It still uses a fake `ImageVerifier`/`ArtifactFetcher`, so it
     does not by itself prove real cosign verification — see "Real cosign verification" below for
     where that gap was closed.
-  - A `kind` cluster (a full kubelet, real container runtime, a deployed webhook Docker image)
-    is a heavier, more realistic environment than envtest but was not built, since the plan's own
-    exit criterion names envtest as the bar and envtest already exercises the actual
-    `ValidatingWebhookConfiguration` object and real API-server admission path. Building the `kind`
-    deployment (Dockerfile push into kind, Service, generated webhook TLS via cert-manager or a
-    self-signed job, RBAC) remains a reasonable follow-up for extra realism, not a gap in what the
-    plan requires.
+  - A `kind` cluster (a full kubelet, real container runtime, a deployed webhook Docker image) is
+    now also built and proven — see "`kind` cluster deployment" below. It found four real bugs
+    envtest's fakes couldn't surface, including one that would have broken every real deployment
+    (`cosign` was never actually copied into the Docker image).
 - **Real cosign verification is now done.** `test/cosign/cosign_integration_test.go` runs the real
   `cosign` binary end to end: it starts a real local OCI registry (`registry:2` in Docker), pushes
   two genuinely different images (different digests, not just different tags of the same content),
@@ -336,12 +333,64 @@ safetensors/ONNX/GGUF framing (see "M3 pickle false-positive measurement" below)
 fixed a real false-positive rather than only measuring one. The two-tiered threshold described
 there is the current, fuzzed-and-verified state of this heuristic.
 
+## `kind` cluster deployment: done, and it found four real bugs envtest couldn't
+
+A full `kind` cluster deployment (real kubelet, real container runtime, the actual Docker image,
+real TLS, real RBAC) is now built and was proven live: `deploy/manifests/{namespace,rbac,deployment}.yaml`,
+`deploy/kind/deploy.sh` (generates the CA/server cert, applies everything, injects the CA bundle),
+and `deploy/kind/sign-test-images.sh` (pushes and signs a real image pair on `ttl.sh`, a free public
+ephemeral registry, since a pod's network can't reach a bare local Docker container by `localhost` —
+that resolves to the pod itself, not the host).
+
+**Every fixture in `deploy/kind/fixtures/` was run against a real, live kind cluster**: a genuinely
+`cosign`-signed image was admitted, actually scheduled, and actually ran to completion; a genuinely
+unsigned image, a privileged container, `hostNetwork`, and a `hostPath` volume were all rejected —
+each with the real error message a cluster operator would actually see, not a simulated one.
+
+**This was worth doing, past what envtest alone proves, because it found four real bugs that a
+fake `ImageVerifier` (used everywhere else, including `test/cosign`'s registry-only integration
+test) could never surface:**
+
+1. **The Dockerfile never actually included the `cosign` binary.** `docs/DECISIONS.md`'s own
+   "shelling out to cosign" section had already stated the trade-off ("at the cost of requiring the
+   `cosign` binary to be present in the webhook's container image") — but the `Dockerfile` was never
+   updated to actually do it. The documented requirement and the actual image had silently drifted
+   apart; every real image signature check would have failed in production with "executable file
+   not found" until this deployment attempt surfaced it. Fixed by copying the binary from the
+   official `ghcr.io/sigstore/cosign/cosign` image into the final distroless stage.
+2. **A cluster-wide `ValidatingWebhookConfiguration` with no `namespaceSelector` would have
+   deadlocked the cluster's own control plane.** M1's "no `ModelGatePolicy` means deny" default
+   applies to every namespace equally, including `kube-system` — installing the webhook without
+   excluding it would have denied CoreDNS's and kube-proxy's own pod updates the moment it was
+   installed. Fixed by adding a `namespaceSelector` excluding `kube-system` and the webhook's own
+   namespace (`modelgate-system`) — a deliberate, minimal safety net, not a general policy
+   exemption (M1's per-namespace `exempt` flag still exists and is still audited/logged for actual
+   policy decisions; this is purely "don't let the webhook brick the cluster it's installed on").
+3. **RBAC**: the webhook's `ServiceAccount` needs a `ClusterRole` granting `get`/`list`/`watch` on
+   `modelgatepolicies.modelgate.dev` across all namespaces, since `internal/policy.Resolver` looks
+   up whichever namespace a pod happens to be in. Not needed in unit tests (fake `client.Reader`) or
+   envtest (a superuser `kubeconfig` by default) — only surfaced once running as an actual
+   `ServiceAccount` with actual RBAC enforcement.
+4. **`timeoutSeconds: 5` was too short once a real network call was involved.** The first live
+   test with a real signed image timed out: `cosign verify`'s real TLS handshake + manifest +
+   signature-layer fetch against a real registry took close to 8 seconds, not the near-instant
+   response envtest's fake verifier always gives. Raised to 15s (empirically re-verified to work,
+   not guessed) — a concrete, measured instance of the trade-off M2's fail-open/fail-closed section
+   already named in the abstract: a slower check pipeline is now a real cost of `UPDATE`-watching
+   and real cosign verification together, not just a theoretical one.
+
+**Why this isn't wired into automated CI the way envtest is:** it needs a real, publicly reachable
+signed/unsigned image pair, which means either pushing to a public ephemeral registry on every CI
+run (extra external dependency, flakiness risk, and it leaves image litter on a third-party service)
+or standing up an in-cluster registry with real TLS reachable from the pod network (real additional
+infrastructure). Given `test/cosign` already proves real cosign verification in isolation and
+`test/e2e` already proves the real admission path against a real API server, this kind cluster run
+is treated as a manual, periodic "does it actually still work end-to-end" check — its value was
+already delivered (the four bugs above), and repeating it doesn't need to happen on every commit to
+keep that value.
+
 ## Deferred (explicitly out of scope so far, tracked for future work)
 
-- A `kind` cluster deployment (Docker image, Service, cert provisioning, RBAC) for extra realism
-  beyond envtest — not required by any milestone's stated exit criterion so far, but would let a
-  future latency benchmark measure real multi-node/concurrent-client behavior (see "M3 admission
-  latency benchmark" above for exactly why envtest's single-process ceiling isn't that).
 - A reconciling controller for `ModelGatePolicy` (e.g. validating `cosignPublicKeyPEM` is
   well-formed PEM at creation time via a `Status` condition, rather than only at admission time) —
   not built. The webhook reads `Spec` directly on every request; `Status` is defined but unused.

@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-unsigned
+  namespace: default
+spec:
+  containers:
+    - name: main
+      image: ${UNSIGNED_IMAGE}

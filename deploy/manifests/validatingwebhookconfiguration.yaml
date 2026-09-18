@@ -7,11 +7,22 @@
 # outage silently disables every check this webhook exists to enforce). See
 # docs/DECISIONS.md for the trade-off and why Fail is the default here.
 #
-# This manifest is not yet wired into a full kind/cluster deployment (no
-# Service/Deployment/cert provisioning alongside it) -- see docs/DECISIONS.md
-# for why that was intentionally deferred. It exists so failurePolicy has one
-# concrete, documented place to be set for a real installation, and so its
-# shape matches exactly what test/e2e/failurepolicy's fixtures assert against.
+# This is deployed and proven against a real kind cluster -- see
+# deploy/kind/deploy.sh and docs/DECISIONS.md's "kind cluster" section for
+# how the certs and CA bundle are generated and injected (not committed
+# here, since they're per-cluster and regenerated on every deploy).
+#
+# namespaceSelector below excludes kube-system and this webhook's own
+# namespace: without it, this cluster-wide config would immediately deny
+# every core cluster pod (CoreDNS, kube-proxy, ...) the moment it's
+# installed, since M1's "no ModelGatePolicy means deny" default applies to
+# them too and no cluster ships a ModelGatePolicy for kube-system out of the
+# box. Excluding by namespace here (rather than requiring every cluster
+# operator to remember to create an exempt ModelGatePolicy for kube-system)
+# is a deliberate, minimal safety net -- it does not exempt kube-system from
+# host-access/signature checks via policy (M1's exempt flag still exists for
+# that, audited and logged), it just prevents this webhook from being able
+# to accidentally deadlock its own cluster's control plane.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
@@ -21,7 +32,13 @@ webhooks:
     admissionReviewVersions: ["v1"]
     sideEffects: None
     failurePolicy: Fail # or Ignore -- see the comment above before changing this
-    timeoutSeconds: 5
+    # 5s (a common default) was tried first and timed out in a real kind
+    # cluster smoke test: cosign verify's network round trip to a real
+    # registry (TLS handshake + manifest + signature layer fetch) routinely
+    # took close to 8s. 15s (Kubernetes' hard cap is 30s) is empirically
+    # what this webhook actually needs when its check pipeline includes a
+    # real network call, not an assumption -- see docs/DECISIONS.md.
+    timeoutSeconds: 15
     rules:
       # UPDATE is required, not just CREATE: spec.containers[*].image is a
       # mutable field on an already-admitted Pod (this is how
@@ -42,6 +59,11 @@ webhooks:
         apiVersions: ["v1"]
         operations: ["UPDATE"]
         resources: ["pods/ephemeralcontainers"]
+    namespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: NotIn
+          values: ["kube-system", "modelgate-system"]
     clientConfig:
       service:
         name: modelgate-webhook

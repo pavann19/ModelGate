@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modelgate-webhook
+  namespace: modelgate-system
+  labels:
+    app: modelgate-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: modelgate-webhook
+  template:
+    metadata:
+      labels:
+        app: modelgate-webhook
+    spec:
+      serviceAccountName: modelgate-webhook
+      containers:
+        - name: webhook
+          image: modelgate-webhook:kind
+          imagePullPolicy: IfNotPresent
+          args:
+            - --webhook-port=9443
+            - --cert-dir=/tmp/k8s-webhook-server/serving-certs
+            - --metrics-bind-address=0
+          ports:
+            - containerPort: 9443
+              name: webhook
+          volumeMounts:
+            - name: certs
+              mountPath: /tmp/k8s-webhook-server/serving-certs
+              readOnly: true
+          readinessProbe:
+            tcpSocket:
+              port: 9443
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: 9443
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: certs
+          secret:
+            secretName: modelgate-webhook-certs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: modelgate-webhook
+  namespace: modelgate-system
+spec:
+  selector:
+    app: modelgate-webhook
+  ports:
+    - port: 443
+      targetPort: 9443

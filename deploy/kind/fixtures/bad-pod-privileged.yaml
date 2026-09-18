@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bad-pod-privileged
+  namespace: default
+spec:
+  containers:
+    - name: main
+      image: ${SIGNED_IMAGE}
+      securityContext:
+        privileged: true

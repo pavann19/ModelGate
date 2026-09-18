@@ -40,6 +40,9 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
   (`adversarial_bypass_test.go`), and `test/e2e/failurepolicy` for fail-open/fail-closed.
 - `bench` — the admission latency benchmark and its committed, measured results.
 - `test/cosign` — real `cosign` sign/verify integration test against a local registry.
+- `deploy/manifests`, `deploy/kind` — the real `kind` cluster deployment (namespace, RBAC,
+  Deployment/Service, `ValidatingWebhookConfiguration`) and the scripts that generate its TLS
+  certs and a real signed/unsigned test image pair.
 
 ## Running tests
 
@@ -72,7 +75,14 @@ CI, not asserted:
   runs the real `cosign` binary against a real local registry, a real signed image, and a real
   (genuinely different, unsigned) image, calling the exact `CosignVerifier` type wired into
   production — not a fake. Runs as its own CI job.
+- **A real `kind` cluster deployment found and fixed four real bugs** that no fake-based test could
+  have surfaced: the Docker image never actually contained the `cosign` binary it shells out to
+  (only documented as a requirement, never implemented), a cluster-wide webhook with no
+  `namespaceSelector` would have deadlocked the cluster's own control plane, the webhook's RBAC was
+  never defined, and the default 5s timeout was too short for cosign's real network round trip
+  (raised to 15s, re-verified). All five fixtures — signed image admitted and actually run,
+  unsigned/privileged/hostNetwork/hostPath all rejected with real error messages — were proven live
+  against the running cluster. See [docs/DECISIONS.md](docs/DECISIONS.md) for the full write-up.
 
-Only a `kind`-cluster deployment for extra realism beyond envtest remains open — see
-[docs/DECISIONS.md](docs/DECISIONS.md) for the complete, itemized status and every trade-off
-write-up.
+Every gap from the original build plan is now closed. See [docs/DECISIONS.md](docs/DECISIONS.md)
+for the complete, itemized status and every trade-off write-up.
