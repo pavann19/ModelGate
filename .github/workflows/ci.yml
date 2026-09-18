@@ -20,3 +20,21 @@ jobs:
         with:
           name: coverage
           path: coverage.out
+
+  envtest:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - name: Install setup-envtest
+        run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+      - name: Download envtest binaries (kube-apiserver, etcd)
+        id: envtest-assets
+        run: echo "path=$(setup-envtest use 1.31.0 -p path)" >> "$GITHUB_OUTPUT"
+      - name: Run envtest suite against a real API server
+        env:
+          KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
+        run: go test ./test/e2e/... -v -timeout 120s

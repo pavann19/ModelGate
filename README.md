@@ -33,6 +33,8 @@ go test ./...
 
 ## Status
 
-MVP admission logic and unit tests are done and green in CI. `kind`/`envtest` end-to-end
-verification, deployment manifests, and TLS provisioning are the next milestone — see
-[docs/DECISIONS.md](docs/DECISIONS.md) for exactly what's verified so far.
+MVP admission logic, unit tests, and an `envtest` suite (real `kube-apiserver` + `etcd`, a real
+`ValidatingWebhookConfiguration`, real TLS) all pass and run in CI — see
+[test/e2e/envtest_test.go](test/e2e/envtest_test.go). Real cosign signature verification against
+an actual signed/unsigned image pair, and a `kind`-cluster deployment for extra realism, are the
+next gaps — see [docs/DECISIONS.md](docs/DECISIONS.md) for exactly what's verified so far.
