@@ -48,6 +48,157 @@ What is actually true right now, so nothing here is overclaimed:
   webhook mid-test** by canceling the manager's context and waiting for the TLS port to actually
   stop accepting connections, then creates a second pod. With `failurePolicy: Fail` the second pod
   is denied; with `failurePolicy: Ignore` it is admitted. Both pass in CI as their own job.
+- **M3 is done**: see "M3 adversarial bypass suite" and "M3 pickle false-positive measurement" and
+  "M3 admission latency benchmark" below for what was found, fixed, and measured.
+
+## M3 adversarial bypass suite: two of the plan's assumptions were wrong, and were fixed, not just documented
+
+The build plan's bypass list included: *"Image swap after admission ... confirm this is genuinely
+out of scope for an admission webhook and document why ... verify this is actually true in your
+test, don't assume it."* That verification found the opposite of what the plan assumed:
+
+- **Image swap after admission is a real bypass, not out of scope.** `spec.containers[*].image`
+  (and `spec.initContainers[*].image`) is a mutable field on an already-admitted Pod in Kubernetes
+  — this is the whole mechanism behind `kubectl set image pod/x container=image`. `test/e2e`'s
+  original `ValidatingWebhookConfiguration` only watched `operations: [CREATE]`, so an attacker
+  could create a pod with a signed image, then `Update` it to an unsigned or pickle-laden image, and
+  the webhook would never see the change. `test/e2e/bypass_probe_test.go`'s original probe
+  confirmed this empirically against a real API server (`TestProbe_ImageSwapAfterAdmission`, since
+  renamed to `TestBypass_ImageSwapAfterAdmission` after the fix below).
+- **`kubectl debug`'s ephemeral-container addition is a separate, unmatched resource.** Adding an
+  ephemeral container goes through the `pods/ephemeralcontainers` subresource, which is a distinct
+  resource from `pods` in admission-review terms — a webhook rule matching `resources: ["pods"]`
+  never sees it, regardless of which operations it lists. This was also empirically confirmed to
+  succeed unblocked.
+
+**The fix** (not a documented limitation, since both are closable without new architecture): both
+`test/e2e/testdata/webhook-config.yaml` and `deploy/manifests/validatingwebhookconfiguration.yaml`
+now declare two rule entries — `resources: ["pods"], operations: ["CREATE", "UPDATE"]` and
+`resources: ["pods/ephemeralcontainers"], operations: ["UPDATE"]`. No `Handle()` logic changed:
+it already re-validates the whole incoming pod spec fresh on every call (including ephemeral
+containers, already covered since the MVP), so watching more operations was the entire fix.
+`test/e2e/bypass_probe_test.go` (despite the filename, no longer just probes) now asserts both
+vectors are blocked, plus a control test (`TestBypass_ImageSwapToSignedImageStillWorks`) proving a
+legitimate update (still-signed image, unrelated mutable field change) is not collateral damage.
+
+**Trade-off now taken on, worth naming:** watching `UPDATE` on `pods` means *every* pod update in
+the cluster that touches a mutable field now round-trips through ModelGate, not just creates. This
+is more admission-webhook load per unit of cluster activity than the MVP/M1/M2 milestones assumed,
+and is exactly why M3's latency benchmark (below) matters — closing this gap is not free, and its
+cost needed to be, and now is, measured rather than assumed away.
+
+**What's still out of scope, correctly:** `initContainers` carrying an unsigned image was already
+covered since the MVP (both `internal/webhook/handler_test.go` and, now, an end-to-end
+`TestBypass_InitContainerUnsignedImage`); it needed no fix here, only end-to-end regression
+coverage alongside the two real findings.
+
+## M3 TOCTOU (artifact changes after admission): explicitly out of scope
+
+A pod's `modelgate.dev/model-artifact` annotation names a file path; nothing stops that file's
+contents from being overwritten after the pod is admitted (e.g. someone rewrites the mounted file,
+or a shared volume is later repointed).
+
+**Why this is out of scope for an admission webhook, and not something the fixes above should be
+stretched to cover:** the two bypasses above (image swap, ephemeral containers) are closable by an
+admission webhook because Kubernetes always routes the *relevant API mutation* — a `Pod` create or
+update — through admission control, and the fix was simply watching the right operations/resources.
+A file changing on disk *after* admission is not a Kubernetes API mutation at all; no admission rule
+change can intercept it, because there is no API call to intercept. Actually defending against this
+would require a fundamentally different mechanism — e.g. a runtime agent that periodically
+re-verifies mounted artifacts, or mounting artifacts read-only from an immutable, content-addressed
+store — which is a different architecture (closer to a runtime security agent than an admission
+webhook) and out of scope for this project as scoped.
+
+**What this means in practice:** ModelGate's guarantee is "the artifact matched its allow-listed
+hash at the moment this pod was admitted," not "the artifact the running pod's process reads is
+guaranteed to match at every later moment." That is a real, permanent limitation of an
+admission-webhook-only architecture, stated plainly rather than glossed over.
+
+## M3 pickle false-positive measurement: fuzzing found a real bug, and it was fixed
+
+The MVP's `docs/DECISIONS.md` entry on pickle detection promised this measurement for M3 rather than
+asserting a false-positive rate with no evidence. It was done via Go's native fuzzer
+(`internal/pickle/fuzz_test.go`), seeded with byte-accurate framing for safetensors, ONNX
+(protobuf), and GGUF files (fixed magic bytes/header structure, fuzzed payload), rather than a small
+hand-curated corpus of downloaded real model files — this repo has no practical way to source and
+store real multi-hundred-MB model weights, and fuzzing the actual byte *shapes* those formats use is
+a more rigorous way to explore the false-positive space than a handful of static fixtures anyway.
+
+**What it found, within seconds of fuzzing:** a legitimate safetensors file could be misclassified
+as a pickle. The root cause: `.` (pickle's STOP opcode) was itself one of the counted "opcode hits,"
+and a real safetensors JSON header routinely contains two or more `}` characters (one per tensor
+entry's own JSON object, plus the outer object). A safetensors file whose raw tensor byte data
+happens to end in `0x2E` (`.`) — a 1-in-256 coincidence, deterministic per file — combined with those
+two `}` hits, reached the old 4-hit threshold entirely by chance, with nothing pickle-like about the
+file at all. This is a real defect: a legitimate model artifact could be wrongly rejected as a
+"pickle," not a false-negative security gap but a false-positive availability/correctness bug.
+
+**The fix:** `internal/pickle/pickle.go`'s opcode-hit threshold is now two-tiered.
+`minOpcodeHitsWithProto = 4` (unchanged) applies when the input starts with the `PROTO` opcode
+(`0x80`) — a real protocol-2+ pickle of any non-trivial object clears 4 hits easily, and starting
+with `0x80` is itself a strong, specific signal (no format checked here — safetensors, ONNX, GGUF —
+begins with that byte). `minOpcodeHitsFallback = 8` applies to the weaker fallback path (no `PROTO`
+prefix, only "ends with `STOP`"), cutting the coincidence rate by roughly 4000x. The originally
+found failing input (safetensors-framed, minimized by the fuzzer to a 2-byte payload `"X."`) is
+committed as a permanent regression seed in `fuzz_test.go`.
+
+**Verified:** 44,339 fuzz executions post-fix with zero new failures (`go test ./internal/pickle/
+-fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=30s`), plus all pre-existing pickle/safetensors
+unit tests still pass. CI runs a shorter (30s) fuzz pass on every push as its own job
+(`fuzz-pickle` in `.github/workflows/ci.yml`) — not exhaustive, but continuous, real fuzzing rather
+than a one-time check.
+
+**Accepted trade-off, stated plainly:** raising the fallback path's bar to 8 hits means a very
+short/trivial protocol-0/1 pickle (an old pickle protocol, rare for real model artifacts, which are
+never that trivial) might now go undetected if it doesn't start with `PROTO` and doesn't reach 8
+opcode hits. This was chosen deliberately over the alternative (excluding `.` from the shared
+opcode set), since it fixes the coincidence rate by a much larger factor for the case that actually
+matters: real safetensors files, which are the artifact format ModelGate is meant to admit.
+
+## M3 admission latency benchmark
+
+`bench/admission_latency_test.go` measures real Pod-create round-trip latency through a real
+kube-apiserver (envtest) and a real ModelGate webhook server, for the full check pipeline (host-
+access checks, signature verification via a fake always-signed verifier, and CRD-backed policy
+resolution via a static exempt resolver — isolating the pipeline's own cost from cosign's and the
+API server's variance). Results are committed as raw, reproducible JSON output in
+`bench/results/admission_latency.json`, following the same "committed run output, not a hand-typed
+number" discipline as the other projects in this portfolio.
+
+**Measured** (200 pods, single local envtest process, Windows/amd64 dev machine — see the "what
+this does and doesn't measure" caveat below before treating these as production numbers):
+
+| Percentile | Latency |
+|---|---|
+| p50 | 2.24 ms |
+| p90 | 3.24 ms |
+| p99 | 6.16 ms |
+| max | 12.13 ms |
+| mean | 2.59 ms |
+
+(Run-to-run variance on a shared dev machine is real and expected — a repeat run measured p50
+2.19ms/p99 3.31ms; both are committed as what they are, single-machine measurements with normal
+noise, not a single blessed number.) Effective throughput in this run: ~23,000 admissions/minute,
+entirely bound by how fast a single
+local Go test process can issue sequential `Create` calls against a single local `kube-apiserver`
+process — not a measurement of a production cluster's ceiling.
+
+**What this does and doesn't measure, stated plainly (this is the most important caveat in this
+section):** there is no `kind`/kubelet cluster deployment in this repo (see the MVP section above
+for why that was deferred), so this benchmark cannot and does not measure scheduling latency,
+kubelet-side effects, a real multi-node control plane's API server load characteristics, or network
+latency to a real (non-local) webhook Service. It measures exactly one thing precisely: the
+wire-level cost of ModelGate's own admission review round trip against a real (if single-process)
+Kubernetes API server. That is a real, useful, and previously unmeasured number — but it is a
+component latency, not a cluster-scale benchmark, and should not be quoted as one.
+
+**Why 200 pods, sequential, not concurrent:** the M3 plan asks for "a histogram of webhook response
+time under N pods/minute." A single local envtest kube-apiserver process is not a realistic stand-in
+for concurrent multi-client load (its own single-process bottlenecks would dominate the measurement
+long before ModelGate's own logic would), so this benchmark measures sequential round-trip latency
+rather than manufacturing a concurrency number that would mostly reflect envtest's, not ModelGate's,
+limits. A concurrent, multi-client throughput ceiling is a `kind`/real-cluster question, tracked
+alongside the deferred `kind` deployment.
 
 ## `ModelGatePolicy` fails closed when a namespace has no policy
 
@@ -157,17 +308,23 @@ pickle payload, and a legitimately-named `.pt` file is frequently a zip archive 
 pickled tensors (PyTorch's default save format), not a raw pickle stream. `IsPyTorchPickle` checks
 both the raw-opcode case and the zip-with-`data.pkl`-entry case.
 
-**Trade-off documented, not yet resolved:** the opcode heuristic (require `PROTO` + at least 4
-distinct opcode hits) was chosen to avoid flagging arbitrary binary files as false positives, but it
-has not been fuzzed against a large corpus of real-world safetensors/ONNX/GGUF files to measure a
-false-positive rate. That measurement is scoped for M3 alongside the adversarial bypass suite.
+**Resolved in M3, not just documented:** the opcode heuristic was fuzzed against byte-accurate
+safetensors/ONNX/GGUF framing (see "M3 pickle false-positive measurement" below), which found and
+fixed a real false-positive rather than only measuring one. The two-tiered threshold described
+there is the current, fuzzed-and-verified state of this heuristic.
 
-## Deferred (explicitly out of scope so far, tracked for later milestones)
+## Deferred (explicitly out of scope so far, tracked for future work)
 
-- Adversarial bypass suite (image swap post-admission, ephemeral container swap timing, artifact
-  TOCTOU) and measured admission latency — M3.
+- Real `cosign` signature verification against an actual signed/unsigned image pair (unit and
+  envtest suites still use a fake `ImageVerifier` — see the MVP status entry above).
+- A `kind` cluster deployment (Docker image, Service, cert provisioning, RBAC) for extra realism
+  beyond envtest — not required by any milestone's stated exit criterion so far, but would let a
+  future latency benchmark measure real multi-node/concurrent-client behavior (see "M3 admission
+  latency benchmark" above for exactly why envtest's single-process ceiling isn't that).
 - A reconciling controller for `ModelGatePolicy` (e.g. validating `cosignPublicKeyPEM` is
   well-formed PEM at creation time via a `Status` condition, rather than only at admission time) —
   not built. The webhook reads `Spec` directly on every request; `Status` is defined but unused.
   This is a reasonable follow-up, not a gap in the M1 plan, which only calls for CRD CRUD and
   namespace-based selection, both of which are done and tested.
+- TOCTOU (artifact changes after admission) is not "deferred" — see its own section above; it is a
+  permanent, architectural scope limit of an admission-webhook-only design, not a future task.

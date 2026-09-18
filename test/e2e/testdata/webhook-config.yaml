@@ -9,10 +9,24 @@ webhooks:
     failurePolicy: Fail
     timeoutSeconds: 5
     rules:
+      # UPDATE is required, not just CREATE: spec.containers[*].image is a
+      # mutable field on an already-admitted Pod (this is how
+      # `kubectl set image pod/x` works), so CREATE-only rules let an
+      # attacker swap in an unsigned/malicious image after admission and
+      # never have it checked. See docs/DECISIONS.md ("M3 adversarial bypass
+      # suite") -- this was empirically confirmed, not assumed.
       - apiGroups: [""]
         apiVersions: ["v1"]
-        operations: ["CREATE"]
+        operations: ["CREATE", "UPDATE"]
         resources: ["pods"]
+      # `kubectl debug` adds an ephemeral container via the
+      # pods/ephemeralcontainers subresource, a distinct resource from
+      # "pods" that the rule above does not match. Also empirically
+      # confirmed to bypass the webhook entirely without this rule.
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["pods/ephemeralcontainers"]
     clientConfig:
       service:
         name: modelgate-envtest

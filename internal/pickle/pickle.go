@@ -32,27 +32,49 @@ var knownOpcodes = map[byte]bool{
 	0x94: true, // MEMOIZE
 }
 
-const minOpcodeHits = 4
+// minOpcodeHitsWithProto is the bar for pickle streams that start with the
+// PROTO opcode (0x80): a real protocol 2+ pickle of virtually any non-empty
+// object clears this easily (FRAME/MEMOIZE/BINPUT alone account for most
+// of it), and starting with 0x80 is itself a strong, specific signal -- no
+// other model format this package has been checked against
+// (safetensors, ONNX, GGUF) begins with that byte.
+const minOpcodeHitsWithProto = 4
+
+// minOpcodeHitsFallback is the (much higher) bar for the fallback path used
+// for protocol 0/1 pickles, which don't start with PROTO. That path's only
+// other signal is "ends with STOP ('.')", which is a 1/256 coincidence on
+// arbitrary bytes -- and fuzzing found that a legitimate safetensors file
+// (whose JSON header routinely contains two or more '}' from its per-tensor
+// objects, itself contributing to the opcode count) combined with tensor
+// data that happens to end in 0x2E reached the old 4-hit bar purely by
+// chance. Raising this fallback path's bar to 8 keeps PROTO-prefixed
+// (protocol 2+) detection exactly as sensitive while cutting that
+// coincidence rate by roughly 4000x, at the cost of missing some very
+// short/trivial protocol-0/1 pickles -- an acceptable trade for real model
+// artifacts, which are never that trivial. See
+// internal/pickle/fuzz_test.go for the fuzz harness that found this.
+const minOpcodeHitsFallback = 8
 
 // IsPickle reports whether data looks like a raw Python pickle stream.
-// It requires a PROTO opcode near the start and a minimum number of
-// distinct-position opcode hits to avoid false positives on arbitrary bytes.
 func IsPickle(data []byte) bool {
 	if len(data) < 2 {
 		return false
 	}
-	if !bytes.HasPrefix(data, protocolMagic) {
-		// Some pickles omit PROTO (protocol 0/1) but still end in STOP ('.').
-		// Require it to at least end with STOP and have opcode density.
-		if len(data) == 0 || data[len(data)-1] != '.' {
-			return false
-		}
+
+	minHits := minOpcodeHitsFallback
+	if bytes.HasPrefix(data, protocolMagic) {
+		minHits = minOpcodeHitsWithProto
+	} else if data[len(data)-1] != '.' {
+		// Some pickles omit PROTO (protocol 0/1) but still end in STOP
+		// ('.'). Without either signal, this isn't plausibly a pickle.
+		return false
 	}
+
 	hits := 0
 	for _, b := range data {
 		if knownOpcodes[b] {
 			hits++
-			if hits >= minOpcodeHits {
+			if hits >= minHits {
 				return true
 			}
 		}
