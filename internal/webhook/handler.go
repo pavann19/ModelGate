@@ -1,14 +1,17 @@
 // Package webhook implements the ModelGate ValidatingAdmissionWebhook: it
 // admits a pod only if every container image is cosign-signed against the
-// configured key, any model-artifact annotation points at a hash-verified
-// safetensors file, and the pod does not request privileged/host-level
-// access.
+// key from the pod namespace's ModelGatePolicy, any model-artifact
+// annotation points at a hash-verified safetensors file on that policy's
+// allow-list, and the pod does not request privileged/host-level access --
+// unless the namespace's policy explicitly (and only explicitly) exempts it.
 package webhook
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -35,6 +38,13 @@ func (FileArtifactFetcher) Fetch(_ context.Context, ref string) ([]byte, error) 
 	return os.ReadFile(ref)
 }
 
+// PolicyResolver looks up the enforcement policy for a pod's namespace.
+// internal/policy.Resolver is the production implementation, backed by the
+// ModelGatePolicy CRD; tests supply a fake.
+type PolicyResolver interface {
+	Resolve(ctx context.Context, namespace string) (policy.Resolution, error)
+}
+
 // ModelArtifactAnnotation is the pod annotation key carrying the identifier
 // of the model artifact to validate, e.g. "modelgate.dev/model-artifact".
 const ModelArtifactAnnotation = "modelgate.dev/model-artifact"
@@ -44,45 +54,65 @@ const ModelArtifactAnnotation = "modelgate.dev/model-artifact"
 // runtime manager wiring so its rules can be exercised directly in unit
 // tests; cmd/webhook/main.go wires it into a real manager and server.
 type Handler struct {
-	Policy   *policy.Config
+	Resolver PolicyResolver
 	Verifier ImageVerifier
 	Fetcher  ArtifactFetcher
+	Logger   *slog.Logger
 }
 
 // NewHandler builds a Handler with production defaults (real cosign
-// verification, filesystem artifact fetch) for the given policy.
-func NewHandler(p *policy.Config) (*Handler, error) {
-	v, err := NewCosignVerifier(p.CosignPublicKeyPEM)
-	if err != nil {
-		return nil, fmt.Errorf("initializing cosign verifier: %w", err)
+// verification via the CLI, filesystem artifact fetch) backed by resolver.
+func NewHandler(resolver PolicyResolver) *Handler {
+	return &Handler{
+		Resolver: resolver,
+		Verifier: CosignVerifier{},
+		Fetcher:  FileArtifactFetcher{},
 	}
-	return &Handler{Policy: p, Verifier: v, Fetcher: FileArtifactFetcher{}}, nil
 }
 
-// Handle implements admission.Handler. It runs the MVP checks in a fixed
-// order — host-level access denial first (cheapest, no I/O), then image
-// signatures, then artifact validation — so the response's Reason names the
-// first violation found rather than requiring the caller to fix issues one
-// at a time across many round trips.
+// Handle implements admission.Handler. It resolves the pod namespace's
+// policy first (an exemption or a missing policy short-circuits everything
+// else), then runs the MVP checks in a fixed order -- host-level access
+// denial first (cheapest, no I/O), then image signatures, then artifact
+// validation -- so the response's Reason names the first violation found.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(req.Object.Raw, pod); err != nil {
 		return admission.Errored(http.StatusBadRequest, fmt.Errorf("decoding pod: %w", err))
 	}
 
+	namespace := req.Namespace
+	if namespace == "" {
+		namespace = pod.Namespace
+	}
+
+	resolution, err := h.Resolver.Resolve(ctx, namespace)
+	if err != nil {
+		if errors.Is(err, policy.ErrNoPolicy) {
+			return admission.Denied(fmt.Sprintf("no ModelGatePolicy exists for namespace %q; failing closed", namespace))
+		}
+		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("resolving policy for namespace %q: %w", namespace, err))
+	}
+
+	if resolution.Exempt {
+		h.logger().Warn("admitting pod without ModelGate checks: namespace is exempt",
+			"namespace", namespace, "pod", pod.Name, "reason", resolution.ExemptionReason)
+		return admission.Allowed(fmt.Sprintf("namespace %q is exempt from ModelGate checks: %s", namespace, resolution.ExemptionReason))
+	}
+	cfg := resolution.Config
+
 	if reason, denied := checkHostAccess(&pod.Spec); denied {
 		return admission.Denied(reason)
 	}
 
-	allContainers := allPodContainers(&pod.Spec)
-	for _, c := range allContainers {
-		if err := h.Verifier.VerifySignature(ctx, c.Image); err != nil {
+	for _, c := range allPodContainers(&pod.Spec) {
+		if err := h.Verifier.VerifySignature(ctx, c.Image, cfg.CosignPublicKeyPEM); err != nil {
 			return admission.Denied(fmt.Sprintf("unsigned or invalid image %q: %v", c.Image, err))
 		}
 	}
 
 	if ref, ok := pod.Annotations[ModelArtifactAnnotation]; ok {
-		if reason, denied := h.checkModelArtifact(ctx, ref); denied {
+		if reason, denied := h.checkModelArtifact(ctx, cfg, ref); denied {
 			return admission.Denied(reason)
 		}
 	}
@@ -90,9 +120,16 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 	return admission.Allowed("all ModelGate checks passed")
 }
 
+func (h *Handler) logger() *slog.Logger {
+	if h.Logger != nil {
+		return h.Logger
+	}
+	return slog.Default()
+}
+
 // checkHostAccess rejects privileged containers and host-level namespace/
-// volume access outright — these are always denied in the MVP, with no
-// exemption mechanism (that arrives with the M1 policy CRD).
+// volume access outright -- these are always denied and are not subject to
+// per-namespace policy configuration, only to the whole-namespace Exempt flag.
 func checkHostAccess(spec *corev1.PodSpec) (reason string, denied bool) {
 	if spec.HostPID {
 		return "hostPID is not permitted", true
@@ -129,8 +166,8 @@ func allPodContainers(spec *corev1.PodSpec) []corev1.Container {
 // checkModelArtifact fetches and validates the artifact referenced by ref
 // against the policy allow-list. A ref not present in the allow-list is a
 // denial, not a silent pass.
-func (h *Handler) checkModelArtifact(ctx context.Context, ref string) (reason string, denied bool) {
-	expectedHash, ok := h.Policy.ArtifactHash(ref)
+func (h *Handler) checkModelArtifact(ctx context.Context, cfg *policy.Config, ref string) (reason string, denied bool) {
+	expectedHash, ok := cfg.ArtifactHash(ref)
 	if !ok {
 		return fmt.Sprintf("model artifact %q is not on the allow-list", ref), true
 	}

@@ -1,0 +1,118 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.5
+  name: modelgatepolicies.modelgate.dev
+spec:
+  group: modelgate.dev
+  names:
+    kind: ModelGatePolicy
+    listKind: ModelGatePolicyList
+    plural: modelgatepolicies
+    shortNames:
+    - mgp
+    singular: modelgatepolicy
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.exempt
+      name: Exempt
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          ModelGatePolicy declares the ModelGate admission rules for the namespace
+          it is created in. Exactly one ModelGatePolicy per namespace is expected;
+          if more than one exists, the webhook picks the oldest by creation
+          timestamp and logs a warning rather than silently picking arbitrarily.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              ModelGatePolicySpec defines the admission rules ModelGate enforces in the
+              namespace this policy lives in.
+            properties:
+              artifactAllowList:
+                description: |-
+                  ArtifactAllowList lists the model artifacts permitted in this
+                  namespace and the SHA-256 each must match.
+                items:
+                  description: |-
+                    ArtifactAllowListEntry pins one model artifact identifier to the SHA-256
+                    digest it must match. The identifier is whatever value pods carry in the
+                    modelgate.dev/model-artifact annotation.
+                  properties:
+                    id:
+                      description: |-
+                        ID is the model artifact identifier referenced by a pod's
+                        modelgate.dev/model-artifact annotation.
+                      minLength: 1
+                      type: string
+                    sha256:
+                      description: SHA256 is the expected lowercase-hex SHA-256 digest
+                        of the artifact.
+                      pattern: ^[a-f0-9]{64}$
+                      type: string
+                  required:
+                  - id
+                  - sha256
+                  type: object
+                type: array
+              cosignPublicKeyPEM:
+                description: |-
+                  CosignPublicKeyPEM is the PEM-encoded cosign public key every
+                  container image in this namespace must be signed against.
+                minLength: 1
+                type: string
+              exempt:
+                default: false
+                description: |-
+                  Exempt, when true, disables all ModelGate checks for this namespace.
+                  This is an explicit, auditable bypass (e.g. for kube-system-style
+                  namespaces) -- it is never inferred, only ever set here. Every
+                  exemption is logged by the webhook at admission time.
+                type: boolean
+              exemptionReason:
+                description: |-
+                  ExemptionReason is required documentation for why Exempt is set,
+                  so an exemption is never silent even in the policy object itself.
+                type: string
+            required:
+            - cosignPublicKeyPEM
+            type: object
+          status:
+            description: |-
+              ModelGatePolicyStatus is currently unused (no controller reconciles this
+              object yet -- the webhook reads Spec directly on each admission request).
+              It exists so the type satisfies the conventional Kubernetes object shape
+              and status subresource wiring is a non-breaking follow-up.
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

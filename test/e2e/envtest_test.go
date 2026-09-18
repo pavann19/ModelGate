@@ -1,8 +1,10 @@
 // Package e2e exercises the ModelGate admission Handler through a real
-// Kubernetes API server (envtest: a real kube-apiserver + etcd, no kubelet)
-// and a real ValidatingWebhookConfiguration -- proving the wiring, TLS, and
-// admission-rule plumbing actually work together, not just the Handle()
-// logic in isolation (that's covered by internal/webhook's unit tests).
+// Kubernetes API server (envtest: a real kube-apiserver + etcd, no kubelet),
+// a real ValidatingWebhookConfiguration, and real ModelGatePolicy CRD
+// objects -- proving the wiring, TLS, CRD schema, and per-namespace policy
+// selection all work together end to end, not just Handle() logic and
+// Resolve() logic in isolation (that's covered by internal/webhook's and
+// internal/policy's own unit tests).
 package e2e
 
 import (
@@ -30,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	modelgatev1alpha1 "github.com/pavann19/modelgate/api/v1alpha1"
 	"github.com/pavann19/modelgate/internal/policy"
 	mgwebhook "github.com/pavann19/modelgate/internal/webhook"
 )
@@ -37,12 +40,18 @@ import (
 // signedImage/unsignedImage stand in for real cosign-signed/unsigned image
 // references. Real cosign verification is unit-tested separately
 // (internal/webhook/verifier.go shells to the real cosign binary); this
-// suite fakes the verifier so it can prove the *webhook plumbing* -- API
-// server, TLS, ValidatingWebhookConfiguration routing, Handle() dispatch --
-// without needing a real signed image and registry in CI.
+// suite fakes the verifier so it can prove the *webhook and CRD plumbing* --
+// API server, TLS, ValidatingWebhookConfiguration routing, ModelGatePolicy
+// lookup, Handle() dispatch -- without needing a real signed image/registry.
 const (
 	signedImage   = "registry.example.com/good/model-server:v1"
 	unsignedImage = "registry.example.com/evil/model-server:v1"
+	testCosignKey = "-----BEGIN PUBLIC KEY-----\ntest-key-not-real\n-----END PUBLIC KEY-----"
+
+	defaultNamespace  = "default"
+	exemptNamespace   = "exempt-ns"
+	noPolicyNamespace = "no-policy-ns"
+	strictNamespace   = "strict-ns"
 )
 
 var goodArtifactData = buildSafetensors(`{"__metadata__":{}}`, []byte{1, 2, 3, 4})
@@ -51,9 +60,10 @@ const goodArtifactID = "resnet50-v1"
 
 var testK8sClient client.Client
 
-// TestMain starts one shared envtest environment (kube-apiserver + etcd)
-// and one shared webhook server for every test in this package, since each
-// is expensive to boot. Individual tests only vary which pod they submit.
+// TestMain starts one shared envtest environment (kube-apiserver + etcd,
+// with the ModelGatePolicy CRD installed) and one shared webhook server for
+// every test in this package, since each is expensive to boot. It also
+// seeds the namespaces and ModelGatePolicy objects the tests select between.
 func TestMain(m *testing.M) {
 	code, err := runWithEnv(m)
 	if err != nil {
@@ -65,6 +75,8 @@ func TestMain(m *testing.M) {
 
 func runWithEnv(m *testing.M) (int, error) {
 	testEnv := &envtest.Environment{
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "deploy", "crd")},
+		ErrorIfCRDPathMissing: true,
 		WebhookInstallOptions: envtest.WebhookInstallOptions{
 			Paths: []string{filepath.Join("testdata", "webhook-config.yaml")},
 		},
@@ -82,12 +94,19 @@ func runWithEnv(m *testing.M) (int, error) {
 
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
-		return 0, fmt.Errorf("adding scheme: %w", err)
+		return 0, fmt.Errorf("adding client-go scheme: %w", err)
+	}
+	if err := modelgatev1alpha1.AddToScheme(scheme); err != nil {
+		return 0, fmt.Errorf("adding modelgate scheme: %w", err)
 	}
 
 	testK8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
 	if err != nil {
 		return 0, fmt.Errorf("creating client: %w", err)
+	}
+
+	if err := seedNamespacesAndPolicies(testK8sClient); err != nil {
+		return 0, fmt.Errorf("seeding fixtures: %w", err)
 	}
 
 	wio := &testEnv.WebhookInstallOptions
@@ -105,12 +124,12 @@ func runWithEnv(m *testing.M) (int, error) {
 		return 0, fmt.Errorf("creating manager: %w", err)
 	}
 
+	// testK8sClient reads directly from the API server (it is not the
+	// manager's cached client), which is exactly the freshness property
+	// production wants from the resolver -- see internal/policy.Resolver.
+	resolver := &policy.Resolver{Reader: testK8sClient}
 	handler := &mgwebhook.Handler{
-		Policy: &policy.Config{
-			ArtifactAllowList: map[string]string{
-				goodArtifactID: sha256Hex(goodArtifactData),
-			},
-		},
+		Resolver: resolver,
 		Verifier: &fakeVerifier{signed: map[string]bool{signedImage: true}},
 		Fetcher:  &fakeFetcher{data: map[string][]byte{goodArtifactID: goodArtifactData}},
 	}
@@ -139,12 +158,57 @@ func runWithEnv(m *testing.M) (int, error) {
 	return code, nil
 }
 
+// seedNamespacesAndPolicies creates the namespaces and ModelGatePolicy
+// objects the tests select between: "default" (an artifact allow-list),
+// "exempt-ns" (Exempt: true), "strict-ns" (a policy that never matches the
+// unsigned test image), and "no-policy-ns" (deliberately left without a
+// ModelGatePolicy, to exercise the fail-closed path).
+func seedNamespacesAndPolicies(c client.Client) error {
+	ctx := context.Background()
+
+	for _, ns := range []string{exemptNamespace, noPolicyNamespace, strictNamespace} {
+		if err := c.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: ns}}); err != nil {
+			return fmt.Errorf("creating namespace %q: %w", ns, err)
+		}
+	}
+
+	policies := []modelgatev1alpha1.ModelGatePolicy{
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "default-policy", Namespace: defaultNamespace},
+			Spec: modelgatev1alpha1.ModelGatePolicySpec{
+				CosignPublicKeyPEM: testCosignKey,
+				ArtifactAllowList: []modelgatev1alpha1.ArtifactAllowListEntry{
+					{ID: goodArtifactID, SHA256: sha256Hex(goodArtifactData)},
+				},
+			},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "strict-policy", Namespace: strictNamespace},
+			Spec:       modelgatev1alpha1.ModelGatePolicySpec{CosignPublicKeyPEM: testCosignKey},
+		},
+		{
+			ObjectMeta: metav1.ObjectMeta{Name: "exempt-policy", Namespace: exemptNamespace},
+			Spec: modelgatev1alpha1.ModelGatePolicySpec{
+				CosignPublicKeyPEM: testCosignKey,
+				Exempt:             true,
+				ExemptionReason:    "test fixture: exempt namespace",
+			},
+		},
+	}
+	for _, p := range policies {
+		if err := c.Create(ctx, &p); err != nil {
+			return fmt.Errorf("creating ModelGatePolicy %s/%s: %w", p.Namespace, p.Name, err)
+		}
+	}
+	return nil
+}
+
 // fakeVerifier and fakeFetcher mirror internal/webhook's test fakes; they
 // are redeclared here (rather than imported, since they're unexported in
 // that package) to keep the e2e suite import-clean.
 type fakeVerifier struct{ signed map[string]bool }
 
-func (f *fakeVerifier) VerifySignature(_ context.Context, image string) error {
+func (f *fakeVerifier) VerifySignature(_ context.Context, image, _ string) error {
 	if f.signed[image] {
 		return nil
 	}
@@ -174,9 +238,9 @@ func sha256Hex(data []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-func namedPod(name, image string) *corev1.Pod {
+func namedPod(namespace, name, image string) *corev1.Pod {
 	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{Name: "main", Image: image}},
 		},
@@ -184,14 +248,14 @@ func namedPod(name, image string) *corev1.Pod {
 }
 
 func TestEnvtest_AdmitsSignedPod(t *testing.T) {
-	pod := namedPod("good-pod", signedImage)
+	pod := namedPod(defaultNamespace, "good-pod", signedImage)
 	if err := testK8sClient.Create(context.Background(), pod); err != nil {
 		t.Fatalf("expected signed pod to be admitted through the real webhook, got: %v", err)
 	}
 }
 
 func TestEnvtest_RejectsUnsignedImage(t *testing.T) {
-	pod := namedPod("unsigned-pod", unsignedImage)
+	pod := namedPod(defaultNamespace, "unsigned-pod", unsignedImage)
 	err := testK8sClient.Create(context.Background(), pod)
 	if err == nil {
 		t.Fatal("expected pod with unsigned image to be rejected by the real webhook")
@@ -203,7 +267,7 @@ func TestEnvtest_RejectsUnsignedImage(t *testing.T) {
 
 func TestEnvtest_RejectsPrivilegedContainer(t *testing.T) {
 	priv := true
-	pod := namedPod("privileged-pod", signedImage)
+	pod := namedPod(defaultNamespace, "privileged-pod", signedImage)
 	pod.Spec.Containers[0].SecurityContext = &corev1.SecurityContext{Privileged: &priv}
 	err := testK8sClient.Create(context.Background(), pod)
 	if err == nil {
@@ -215,7 +279,7 @@ func TestEnvtest_RejectsPrivilegedContainer(t *testing.T) {
 }
 
 func TestEnvtest_RejectsHostNetwork(t *testing.T) {
-	pod := namedPod("hostnetwork-pod", signedImage)
+	pod := namedPod(defaultNamespace, "hostnetwork-pod", signedImage)
 	pod.Spec.HostNetwork = true
 	err := testK8sClient.Create(context.Background(), pod)
 	if err == nil {
@@ -227,7 +291,7 @@ func TestEnvtest_RejectsHostNetwork(t *testing.T) {
 }
 
 func TestEnvtest_RejectsHostPathVolume(t *testing.T) {
-	pod := namedPod("hostpath-pod", signedImage)
+	pod := namedPod(defaultNamespace, "hostpath-pod", signedImage)
 	pod.Spec.Volumes = []corev1.Volume{{
 		Name:         "hostvol",
 		VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc"}},
@@ -242,7 +306,7 @@ func TestEnvtest_RejectsHostPathVolume(t *testing.T) {
 }
 
 func TestEnvtest_AdmitsValidModelArtifact(t *testing.T) {
-	pod := namedPod("model-pod", signedImage)
+	pod := namedPod(defaultNamespace, "model-pod", signedImage)
 	pod.Annotations = map[string]string{mgwebhook.ModelArtifactAnnotation: goodArtifactID}
 	if err := testK8sClient.Create(context.Background(), pod); err != nil {
 		t.Fatalf("expected pod with valid, allow-listed model artifact to be admitted, got: %v", err)
@@ -250,11 +314,49 @@ func TestEnvtest_AdmitsValidModelArtifact(t *testing.T) {
 }
 
 func TestEnvtest_RejectsArtifactNotOnAllowList(t *testing.T) {
-	pod := namedPod("unknown-model-pod", signedImage)
+	pod := namedPod(defaultNamespace, "unknown-model-pod", signedImage)
 	pod.Annotations = map[string]string{mgwebhook.ModelArtifactAnnotation: "not-on-allow-list"}
 	err := testK8sClient.Create(context.Background(), pod)
 	if err == nil {
 		t.Fatal("expected pod referencing an unlisted model artifact to be rejected")
+	}
+	if !apierrors.IsForbidden(err) {
+		t.Fatalf("expected a Forbidden (admission-denied) error, got: %v", err)
+	}
+}
+
+// --- M1: ModelGatePolicy CRD selection and exemption tests ---
+
+func TestEnvtest_NamespaceWithoutPolicyIsDeniedFailClosed(t *testing.T) {
+	pod := namedPod(noPolicyNamespace, "orphan-pod", signedImage)
+	err := testK8sClient.Create(context.Background(), pod)
+	if err == nil {
+		t.Fatal("expected a pod in a namespace with no ModelGatePolicy to be denied")
+	}
+	if !apierrors.IsForbidden(err) {
+		t.Fatalf("expected a Forbidden (admission-denied) error, got: %v", err)
+	}
+}
+
+func TestEnvtest_ExemptNamespaceBypassesChecks(t *testing.T) {
+	// The exempt namespace's policy still names testCosignKey, but the
+	// fake verifier only signs signedImage -- so admitting unsignedImage
+	// here proves the Exempt flag actually short-circuits verification
+	// rather than just having a permissive artifact list.
+	pod := namedPod(exemptNamespace, "exempt-pod", unsignedImage)
+	if err := testK8sClient.Create(context.Background(), pod); err != nil {
+		t.Fatalf("expected pod in an exempt namespace to be admitted regardless of image signature, got: %v", err)
+	}
+}
+
+func TestEnvtest_DifferentNamespacesEnforceIndependently(t *testing.T) {
+	// strict-ns has a real (non-exempt) policy, so the same unsigned image
+	// that was admitted in exempt-ns must be rejected here -- proving
+	// policy selection is per-namespace, not a global fallback.
+	pod := namedPod(strictNamespace, "strict-pod", unsignedImage)
+	err := testK8sClient.Create(context.Background(), pod)
+	if err == nil {
+		t.Fatal("expected strict-ns's own (non-exempt) policy to reject the unsigned image")
 	}
 	if !apierrors.IsForbidden(err) {
 		t.Fatalf("expected a Forbidden (admission-denied) error, got: %v", err)
