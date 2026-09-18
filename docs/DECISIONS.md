@@ -29,8 +29,9 @@ What is actually true right now, so nothing here is overclaimed:
   `internal/webhook.CosignVerifier.VerifySignature` — the exact type wired into production, not a
   fake — against both. It passes: the signed image verifies, the unsigned one is rejected. This
   runs as its own CI job (`cosign-integration` in `.github/workflows/ci.yml`, using
-  `sigstore/cosign-installer`) and skips cleanly (not a failure) if `docker`/`cosign` aren't on
-  `PATH`, the same pattern `test/e2e` uses for `KUBEBUILDER_ASSETS`.
+  `sigstore/cosign-installer`). Locally it skips if `docker`/`cosign` aren't on `PATH`; when the `CI`
+  environment variable is set it fails instead, so the job cannot pass without the test having run.
+  (The run log for CI run 35348685402 shows it executing, 7.26s, rather than skipping.)
 - **M1 is done**: the three MVP checks now live behind a `ModelGatePolicy` CRD
   (`api/v1alpha1/modelgatepolicy_types.go`), one instance per namespace, with an explicit
   `exempt`/`exemptionReason` field. `internal/policy.Resolver` looks it up per admission request
