@@ -17,17 +17,29 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - run: go build ./...
-      - run: go vet ./...
       # test/e2e/... and bench/... require KUBEBUILDER_ASSETS (a real
       # kube-apiserver + etcd) -- that's the envtest job below, not this one.
       # test/cosign/... requires the real cosign binary -- that's the
       # cosign-integration job below, not this one.
-      - run: go test $(go list ./... | grep -vE '/(test/e2e|bench|test/cosign)') -v -race -coverprofile=coverage.out
+      - name: Build, vet, and run unit tests
+        run: |
+          set -o pipefail
+          {
+            go build ./...
+            go vet ./...
+            go test $(go list ./... | grep -vE '/(test/e2e|bench|test/cosign)') -v -race -coverprofile=coverage.out
+          } 2>&1 | tee unit-tests-output.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: coverage
           path: coverage.out
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: unit-tests-output
+          path: unit-tests-output.txt
 
   envtest:
     runs-on: ubuntu-latest
@@ -45,15 +57,29 @@ jobs:
       - name: Run envtest suites against a real API server
         env:
           KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
-        run: go test ./test/e2e/... -v -timeout 120s
+        run: |
+          set -o pipefail
+          go test ./test/e2e/... -v -timeout 120s 2>&1 | tee envtest-output.txt
       - name: Run admission latency benchmark against a real API server
         env:
           KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
-        run: go test ./bench/ -run TestAdmissionLatency -v -timeout 120s
+        run: |
+          set -o pipefail
+          go test ./bench/ -run TestAdmissionLatency -v -timeout 120s 2>&1 | tee envtest-benchmark-output.txt
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: admission-latency
           path: bench/results/admission_latency.json
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: envtest-output
+          path: |
+            envtest-output.txt
+            envtest-benchmark-output.txt
+          if-no-files-found: ignore
 
   fuzz-pickle:
     runs-on: ubuntu-latest
@@ -64,7 +90,14 @@ jobs:
         with:
           go-version: '1.24'
       - name: Fuzz the pickle detector against safetensors/ONNX/GGUF-shaped inputs
-        run: go test ./internal/pickle/ -fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=30s
+        run: |
+          set -o pipefail
+          go test ./internal/pickle/ -fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=30s 2>&1 | tee fuzz-pickle-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fuzz-pickle-output
+          path: fuzz-pickle-output.txt
 
   cosign-integration:
     runs-on: ubuntu-latest
@@ -76,7 +109,14 @@ jobs:
           go-version: '1.24'
       - uses: sigstore/cosign-installer@v3
       - name: Verify CosignVerifier against a real signed and a real unsigned image
-        run: go test ./test/cosign/... -v -timeout 120s
+        run: |
+          set -o pipefail
+          go test ./test/cosign/... -v -timeout 120s 2>&1 | tee cosign-integration-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cosign-integration-output
+          path: cosign-integration-output.txt
 
   # Real kind cluster, real image build, real TLS/RBAC, a real signed and
   # unsigned image pair on ttl.sh, and assertions on what the live webhook

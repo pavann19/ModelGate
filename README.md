@@ -62,6 +62,18 @@ tests that do not need envtest can be run directly:
 go test ./...
 ```
 
+## CI artifacts
+
+Every CI path leaves downloadable evidence on the workflow run, including failure output:
+
+| CI check | Artifact | Contents |
+| --- | --- | --- |
+| Unit tests | `unit-tests-output`, `coverage` | Build, vet, race-enabled test output, and `coverage.out` when produced |
+| envtest | `envtest-output`, `admission-latency` | End-to-end/benchmark logs and the measured latency JSON when produced |
+| Cosign | `cosign-integration-output` | Real signed-image and unsigned-image integration-test output |
+| Pickle fuzzing | `fuzz-pickle-output` | The 30-second CI fuzz run output |
+| kind smoke test | `kind-smoke-output` | Deployment output and every admission assertion from the real kind cluster |
+
 ## Status
 
 ModelGate's build plan (MVP through M3) is implemented. Each highlight below names the test or CI
@@ -109,3 +121,5 @@ job that backs it; the known gaps are listed at the end.
 (no `PROTO` prefix) are not detected; TOCTOU after admission is out of scope for an admission
 webhook; cosign verification skips the transparency log by design (the pinned key is the trust
 anchor); the latency numbers are single-process envtest runs, not a multi-node cluster.
+
+ModelGate is verified in CI and kind; it has not been operated on a managed production cluster.
