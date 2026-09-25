@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - crd/modelgate.dev_modelgatepolicies.yaml
+  - manifests/namespace.yaml
+  - manifests/rbac.yaml
+  - manifests/deployment.yaml
+images:
+  - name: modelgate-webhook
+    newName: ghcr.io/pavann19/modelgate
+    newTag: latest

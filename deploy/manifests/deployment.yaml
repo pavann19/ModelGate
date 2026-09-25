@@ -23,10 +23,12 @@ spec:
           args:
             - --webhook-port=9443
             - --cert-dir=/tmp/k8s-webhook-server/serving-certs
-            - --metrics-bind-address=0
+            - --metrics-bind-address=:8080
           ports:
             - containerPort: 9443
               name: webhook
+            - containerPort: 8080
+              name: metrics
           volumeMounts:
             - name: certs
               mountPath: /tmp/k8s-webhook-server/serving-certs
@@ -57,3 +59,7 @@ spec:
   ports:
     - port: 443
       targetPort: 9443
+      name: webhook
+    - port: 8080
+      targetPort: 8080
+      name: metrics

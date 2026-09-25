@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -76,9 +77,10 @@ func NewHandler(resolver PolicyResolver) *Handler {
 // denial first (cheapest, no I/O), then image signatures, then artifact
 // validation -- so the response's Reason names the first violation found.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
+	started := time.Now()
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(req.Object.Raw, pod); err != nil {
-		return admission.Errored(http.StatusBadRequest, fmt.Errorf("decoding pod: %w", err))
+		return h.finish(req, pod, started, "error", "decode_error", admission.Errored(http.StatusBadRequest, fmt.Errorf("decoding pod: %w", err)))
 	}
 
 	namespace := req.Namespace
@@ -89,35 +91,51 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 	resolution, err := h.Resolver.Resolve(ctx, namespace)
 	if err != nil {
 		if errors.Is(err, policy.ErrNoPolicy) {
-			return admission.Denied(fmt.Sprintf("no ModelGatePolicy exists for namespace %q; failing closed", namespace))
+			return h.finish(req, pod, started, "denied", "no_policy", admission.Denied(fmt.Sprintf("no ModelGatePolicy exists for namespace %q; failing closed", namespace)))
 		}
-		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("resolving policy for namespace %q: %w", namespace, err))
+		return h.finish(req, pod, started, "error", "policy_error", admission.Errored(http.StatusInternalServerError, fmt.Errorf("resolving policy for namespace %q: %w", namespace, err)))
 	}
 
 	if resolution.Exempt {
 		h.logger().Warn("admitting pod without ModelGate checks: namespace is exempt",
 			"namespace", namespace, "pod", pod.Name, "reason", resolution.ExemptionReason)
-		return admission.Allowed(fmt.Sprintf("namespace %q is exempt from ModelGate checks: %s", namespace, resolution.ExemptionReason))
+		return h.finish(req, pod, started, "allowed", "exempt", admission.Allowed(fmt.Sprintf("namespace %q is exempt from ModelGate checks: %s", namespace, resolution.ExemptionReason)))
 	}
 	cfg := resolution.Config
 
 	if reason, denied := checkHostAccess(&pod.Spec); denied {
-		return admission.Denied(reason)
+		return h.finish(req, pod, started, "denied", "host_access", admission.Denied(reason))
 	}
 
 	for _, c := range allPodContainers(&pod.Spec) {
 		if err := h.Verifier.VerifySignature(ctx, c.Image, cfg.CosignPublicKeyPEM); err != nil {
-			return admission.Denied(fmt.Sprintf("unsigned or invalid image %q: %v", c.Image, err))
+			return h.finish(req, pod, started, "denied", "image_signature", admission.Denied(fmt.Sprintf("unsigned or invalid image %q: %v", c.Image, err)))
 		}
 	}
 
 	if ref, ok := pod.Annotations[ModelArtifactAnnotation]; ok {
 		if reason, denied := h.checkModelArtifact(ctx, cfg, ref); denied {
-			return admission.Denied(reason)
+			return h.finish(req, pod, started, "denied", "model_artifact", admission.Denied(reason))
 		}
 	}
 
-	return admission.Allowed("all ModelGate checks passed")
+	return h.finish(req, pod, started, "allowed", "checks_passed", admission.Allowed("all ModelGate checks passed"))
+}
+
+func (h *Handler) finish(req admission.Request, pod *corev1.Pod, started time.Time, outcome, reason string, response admission.Response) admission.Response {
+	duration := time.Since(started)
+	admissionDecisions.WithLabelValues(outcome, reason).Inc()
+	admissionDuration.WithLabelValues(outcome).Observe(duration.Seconds())
+	h.logger().Info("admission decision",
+		"request_uid", req.UID,
+		"operation", req.Operation,
+		"namespace", req.Namespace,
+		"pod", pod.Name,
+		"outcome", outcome,
+		"reason", reason,
+		"duration_ms", float64(duration.Microseconds())/1000,
+	)
+	return response
 }
 
 func (h *Handler) logger() *slog.Logger {

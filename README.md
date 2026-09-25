@@ -45,6 +45,8 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
 - `deploy/manifests`, `deploy/kind` — the real `kind` cluster deployment (namespace, RBAC,
   Deployment/Service, `ValidatingWebhookConfiguration`) and the scripts that generate its TLS
   certs and a real signed/unsigned test image pair.
+- `deploy/kustomization.yaml`, `deploy/helm` — Kustomize and Helm installation entry points. Both
+  require a cluster-issued webhook TLS secret and matching CA bundle; neither commits private keys.
 
 ## Running tests
 
@@ -61,6 +63,64 @@ tests that do not need envtest can be run directly:
 ```bash
 go test ./...
 ```
+
+## Install with Helm or Kustomize
+
+The webhook requires a TLS secret containing `tls.crt` and `tls.key`, plus the issuing CA in the
+`ValidatingWebhookConfiguration`. For a local kind cluster, `deploy/kind/deploy.sh` generates those
+ephemeral materials and is the end-to-end tested path. For an existing cluster, have cert-manager
+or your platform PKI create `modelgate-webhook-certs` first.
+
+Helm refuses to render without the CA bundle, preventing an apparently successful but unusable
+installation:
+
+```bash
+CA_BUNDLE="$(base64 -w0 ca.crt)"
+kubectl apply -f deploy/crd/modelgate.dev_modelgatepolicies.yaml
+helm upgrade --install modelgate deploy/helm \
+  --namespace modelgate-system --create-namespace \
+  --set-string tls.caBundle="$CA_BUNDLE" \
+  --set image.repository=ghcr.io/pavann19/modelgate \
+  --set image.tag=<immutable-tag>
+```
+
+The Kustomize base is rendered with `kubectl kustomize deploy`. Set its image to an immutable tag,
+apply it, and inject the CA bundle immediately from the same trusted certificate source:
+
+```bash
+kubectl apply -k deploy
+kubectl patch --local -f deploy/manifests/validatingwebhookconfiguration.yaml \
+  --type=json -p="[{\"op\":\"add\",\"path\":\"/webhooks/0/clientConfig/caBundle\",\"value\":\"$CA_BUNDLE\"}]" \
+  -o yaml | kubectl apply -f -
+```
+
+Do not send workloads through ModelGate until the CA is injected and the Deployment is Ready. The
+default `failurePolicy: Fail` deliberately rejects admissions when the webhook cannot be reached.
+
+## Inspect admission decisions and metrics
+
+Every request emits one structured `admission decision` log with request UID, operation, namespace,
+pod, bounded outcome/reason, and handler duration. Inspect or follow them with:
+
+```bash
+kubectl -n modelgate-system logs deployment/modelgate-webhook --since=10m \
+  | grep 'admission decision'
+kubectl -n modelgate-system logs deployment/modelgate-webhook -f
+```
+
+The controller-runtime metrics endpoint is exposed on the Service's `metrics` port. Port-forward it
+locally and inspect the ModelGate series:
+
+```bash
+kubectl -n modelgate-system port-forward service/modelgate-webhook 8080:8080
+curl -s http://127.0.0.1:8080/metrics \
+  | grep '^modelgate_admission_'
+```
+
+`modelgate_admission_decisions_total{outcome,reason}` keeps allow/deny/error reasons separate, and
+`modelgate_admission_duration_seconds{outcome}` provides latency buckets for p50/p95/p99 queries.
+The Helm chart can also create a `ServiceMonitor` with
+`--set metrics.serviceMonitor.enabled=true` when the Prometheus Operator CRDs are installed.
 
 ## CI artifacts
 

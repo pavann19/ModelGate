@@ -1,0 +1,17 @@
+image:
+  repository: ghcr.io/pavann19/modelgate
+  tag: latest
+  pullPolicy: IfNotPresent
+
+failurePolicy: Fail
+timeoutSeconds: 15
+
+tls:
+  secretName: modelgate-webhook-certs
+  caBundle: ""
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+    interval: 30s
