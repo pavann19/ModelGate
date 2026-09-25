@@ -48,6 +48,16 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
 
 ## Running tests
 
+Run the local preflight from PowerShell to install the pinned `setup-envtest` release and resolve
+the pinned Kubernetes 1.31.0 API server and etcd binaries:
+
+```powershell
+.\hack\preflight.ps1
+```
+
+The script prints the `KUBEBUILDER_ASSETS` command needed before running the envtest suites. Unit
+tests that do not need envtest can be run directly:
+
 ```bash
 go test ./...
 ```

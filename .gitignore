@@ -3,6 +3,7 @@
 coverage.out
 .idea/
 .vscode/
+.tools/
 
 # Generated per-cluster, never committed: see deploy/kind/deploy.sh.
 deploy/kind/certs/

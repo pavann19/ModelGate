@@ -1,5 +1,9 @@
 name: CI
 
+env:
+  SETUP_ENVTEST_VERSION: v0.0.0-20250308055145-5fe7bb3edc86
+  ENVTEST_K8S_VERSION: 1.31.0
+
 on:
   push:
     branches: [main]
@@ -34,10 +38,10 @@ jobs:
         with:
           go-version: '1.24'
       - name: Install setup-envtest
-        run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+        run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@${SETUP_ENVTEST_VERSION}
       - name: Download envtest binaries (kube-apiserver, etcd)
         id: envtest-assets
-        run: echo "path=$(setup-envtest use 1.31.0 -p path)" >> "$GITHUB_OUTPUT"
+        run: echo "path=$(setup-envtest use ${ENVTEST_K8S_VERSION} -p path)" >> "$GITHUB_OUTPUT"
       - name: Run envtest suites against a real API server
         env:
           KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
