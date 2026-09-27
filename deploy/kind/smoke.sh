@@ -22,6 +22,7 @@ set -euo pipefail
 CLUSTER="${CLUSTER:-modelgate}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
+BASH_BIN="${BASH:-bash}"
 
 fail() { echo "SMOKE FAIL: $*" >&2; exit 1; }
 pass() { echo "SMOKE PASS: $*"; }
@@ -31,16 +32,25 @@ docker build -t modelgate-webhook:kind .
 kind load docker-image modelgate-webhook:kind --name "$CLUSTER"
 
 echo "==> Deploying ModelGate (deploy/kind/deploy.sh)"
-bash deploy/kind/deploy.sh
+"$BASH_BIN" deploy/kind/deploy.sh
 
 echo "==> Pushing and signing a real image pair, creating the namespace policy"
 SIGN_OUT="$(mktemp)"
-bash deploy/kind/sign-test-images.sh > "$SIGN_OUT"
+"$BASH_BIN" deploy/kind/sign-test-images.sh > "$SIGN_OUT"
 # The script prints `export ...` lines and then a ModelGatePolicy manifest.
 eval "$(grep '^export ' "$SIGN_OUT")"
 grep -v '^export ' "$SIGN_OUT" | kubectl apply -f -
 echo "signed image:   $SIGNED_IMAGE"
 echo "unsigned image: $UNSIGNED_IMAGE"
+
+echo "==> Cleaning any previous fixture pods so this run exercises admission"
+kubectl -n default delete pod \
+  good-pod \
+  bad-pod-unsigned \
+  bad-pod-privileged \
+  bad-pod-hostnetwork \
+  bad-pod-hostpath \
+  --ignore-not-found
 
 apply_fixture() { # name -> prints kubectl's combined output, returns its exit code
   envsubst < "deploy/kind/fixtures/$1.yaml" | kubectl apply -f - 2>&1

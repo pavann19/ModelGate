@@ -8,16 +8,18 @@
 #
 # This script is what deploy/manifests/validatingwebhookconfiguration.yaml's
 # header comment refers to as "how the certs and CA bundle are generated and
-# injected" -- it is not itself run in CI (a kind cluster smoke test needs a
-# real, reachable, network-accessible signed/unsigned image pair to fully
-# exercise cosign, which is a manual verification step -- see
-# docs/DECISIONS.md's "kind cluster" section for exactly what was proven
-# this way and why it isn't wired into the automated CI pipeline the way
-# envtest is).
+# injected"; it is exercised by deploy/kind/smoke.sh in CI and can also be run
+# manually against a local kind cluster.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CERT_DIR="$REPO_ROOT/deploy/kind/certs"
+KUBE_REPO_ROOT="$REPO_ROOT"
+KUBE_CERT_DIR="$CERT_DIR"
+if command -v cygpath >/dev/null 2>&1; then
+  KUBE_REPO_ROOT="$(cygpath -w "$REPO_ROOT")"
+  KUBE_CERT_DIR="$(cygpath -w "$CERT_DIR")"
+fi
 SVC=modelgate-webhook
 NS=modelgate-system
 
@@ -48,22 +50,23 @@ openssl req -new -key tls.key -out tls.csr -subj "/CN=${SVC}.${NS}.svc" -config 
 openssl x509 -req -in tls.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out tls.crt -days 365 -extensions v3_req -extfile san.cnf >/dev/null 2>&1
 
 echo "==> Applying namespace, RBAC, and the ModelGatePolicy CRD"
-kubectl apply -f "$REPO_ROOT/deploy/manifests/namespace.yaml"
-kubectl apply -f "$REPO_ROOT/deploy/manifests/rbac.yaml"
-kubectl apply -f "$REPO_ROOT/deploy/crd/modelgate.dev_modelgatepolicies.yaml"
+kubectl apply -f "$KUBE_REPO_ROOT/deploy/manifests/namespace.yaml"
+kubectl apply -f "$KUBE_REPO_ROOT/deploy/manifests/rbac.yaml"
+kubectl apply -f "$KUBE_REPO_ROOT/deploy/crd/modelgate.dev_modelgatepolicies.yaml"
 
 echo "==> Creating the webhook's TLS secret"
 kubectl create secret tls "${SVC}-certs" \
-  --cert="$CERT_DIR/tls.crt" --key="$CERT_DIR/tls.key" \
+  --cert="$KUBE_CERT_DIR/tls.crt" --key="$KUBE_CERT_DIR/tls.key" \
   -n "$NS" --dry-run=client -o yaml | kubectl apply -f -
 
 echo "==> Deploying the webhook"
-kubectl apply -f "$REPO_ROOT/deploy/manifests/deployment.yaml"
+kubectl apply -f "$KUBE_REPO_ROOT/deploy/manifests/deployment.yaml"
+kubectl -n "$NS" rollout restart deployment/modelgate-webhook
 kubectl -n "$NS" rollout status deployment/modelgate-webhook --timeout=90s
 
 echo "==> Installing the ValidatingWebhookConfiguration with the real CA bundle"
 CA_BUNDLE=$(base64 -w0 "$CERT_DIR/ca.crt" 2>/dev/null || base64 "$CERT_DIR/ca.crt" | tr -d '\n')
-kubectl apply -f "$REPO_ROOT/deploy/manifests/validatingwebhookconfiguration.yaml"
+kubectl apply -f "$KUBE_REPO_ROOT/deploy/manifests/validatingwebhookconfiguration.yaml"
 kubectl patch validatingwebhookconfiguration modelgate --type='json' \
   -p="[{\"op\": \"replace\", \"path\": \"/webhooks/0/clientConfig/caBundle\", \"value\":\"$CA_BUNDLE\"}]"
 

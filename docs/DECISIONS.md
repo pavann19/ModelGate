@@ -421,10 +421,11 @@ and uploads the full output as the `kind-smoke-output` artifact. It passed on it
 
 **Trade-offs of that job, stated plainly:** it pushes two throwaway images to `ttl.sh`, a free public
 registry, on every run, so it depends on that service being up and on outbound network access, and it
-is the slowest job (about 2.5 minutes). The earlier version of this section argued against CI for
-exactly those reasons; running it anyway was judged better than leaving the flagship deployment
-claim without a repeatable check. If ttl.sh flakiness becomes a problem, the alternative is an
-in-cluster registry with TLS, which is more setup.
+is the slowest job. The image tags default to a 1-hour TTL, deliberately longer than the CI timeout,
+so a slow build/deploy/sign phase should not race expiry during admission assertions. The earlier
+version of this section argued against CI for exactly those reasons; running it anyway was judged
+better than leaving the flagship deployment claim without a repeatable check. If ttl.sh flakiness
+becomes a problem, the alternative is an in-cluster registry with TLS, which is more setup.
 
 ## Deferred (explicitly out of scope so far, tracked for future work)
 

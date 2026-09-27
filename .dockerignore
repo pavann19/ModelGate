@@ -1,0 +1,6 @@
+.git
+.tools
+kind-smoke-output.local.txt
+coverage.out
+*.test
+*.log
