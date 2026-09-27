@@ -1,0 +1,78 @@
+name: Azure ACR Image Evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Immutable image tag to publish. Defaults to the commit SHA.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve image coordinates
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.image_tag }}"
+          if [[ -z "$tag" ]]; then
+            tag="${GITHUB_SHA}"
+          fi
+          login_server="$(az acr show --name "${{ vars.AZURE_ACR_NAME }}" --query loginServer -o tsv)"
+          image="${login_server}/modelgate-webhook:${tag}"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "login_server=$login_server" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: Build webhook image
+        run: docker build -t "${{ steps.image.outputs.image }}" .
+
+      - name: Push image to ACR
+        shell: bash
+        run: |
+          set -euo pipefail
+          az acr login --name "${{ vars.AZURE_ACR_NAME }}"
+          docker push "${{ steps.image.outputs.image }}"
+
+      - name: Capture image digest evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          digest="$(docker buildx imagetools inspect "${{ steps.image.outputs.image }}" | awk '/Digest:/ {print $2; exit}')"
+          cat > artifacts/azure-acr-image-evidence.json <<JSON
+          {
+            "repository": "${GITHUB_REPOSITORY}",
+            "commit": "${GITHUB_SHA}",
+            "workflowRun": "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}",
+            "acr": "${{ vars.AZURE_ACR_NAME }}",
+            "loginServer": "${{ steps.image.outputs.login_server }}",
+            "image": "${{ steps.image.outputs.image }}",
+            "tag": "${{ steps.image.outputs.tag }}",
+            "digest": "${digest}"
+          }
+          JSON
+          cat artifacts/azure-acr-image-evidence.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: azure-acr-image-evidence
+          path: artifacts/azure-acr-image-evidence.json
+          if-no-files-found: error

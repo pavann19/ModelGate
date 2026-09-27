@@ -47,6 +47,8 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
   certs and a real signed/unsigned test image pair.
 - `deploy/kustomization.yaml`, `deploy/helm` — Kustomize and Helm installation entry points. Both
   require a cluster-issued webhook TLS secret and matching CA bundle; neither commits private keys.
+- `.github/workflows/azure-acr.yml` — manual Azure Container Registry image evidence workflow; see
+  [docs/AZURE_ACR_EVIDENCE.md](docs/AZURE_ACR_EVIDENCE.md).
 
 ## Running tests
 
@@ -133,6 +135,11 @@ Every CI path leaves downloadable evidence on the workflow run, including failur
 | Cosign | `cosign-integration-output` | Real signed-image and unsigned-image integration-test output |
 | Pickle fuzzing | `fuzz-pickle-output` | The 30-second CI fuzz run output |
 | kind smoke test | `kind-smoke-output` | Deployment output and every admission assertion from the real kind cluster |
+| Azure ACR evidence | `azure-acr-image-evidence` | Manual ACR image push metadata and digest for the selected commit |
+
+The Azure ACR workflow is intentionally image-provenance evidence only. It does not claim AKS,
+Azure Container Apps, or managed production operation; the live admission behavior proof is still
+the `kind-smoke` CI job.
 
 ## Status
 
