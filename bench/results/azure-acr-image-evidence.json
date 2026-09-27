@@ -1,0 +1,13 @@
+{
+  "repository": "pavann19/ModelGate",
+  "commit": "bf22be38d67e225f212be3681fe6ab63f7e23e95",
+  "workflowRun": "https://github.com/pavann19/ModelGate/actions/runs/36338037260",
+  "workflowConclusion": "success",
+  "acr": "pavancoderacr",
+  "loginServer": "pavancoderacr.azurecr.io",
+  "image": "pavancoderacr.azurecr.io/modelgate-webhook:bf22be38d67e225f212be3681fe6ab63f7e23e95",
+  "tag": "bf22be38d67e225f212be3681fe6ab63f7e23e95",
+  "digest": "sha256:542c4a37afd5d65c9b52f6ac7e6aaa29d0ad69d289add40ed8b74184f22c0859",
+  "verifiedAtUtc": "2026-09-27T17:46:31Z",
+  "boundary": "ACR image publication evidence only; admission behavior remains proven by CI kind-smoke, not by this ACR run."
+}

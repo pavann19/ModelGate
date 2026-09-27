@@ -40,3 +40,13 @@ The workflow builds `modelgate-webhook`, pushes it to ACR, and uploads `azure-ac
 ## Evidence boundary
 
 A green ACR run proves image build and Azure registry publication for the named commit. It does not prove operation on AKS, Azure Container Apps, or any managed production cluster. Admission behavior remains proven by the normal CI `kind-smoke` artifact.
+
+## Recorded run
+
+The first successful ACR evidence run was completed on 2026-09-27:
+
+- Workflow run: <https://github.com/pavann19/ModelGate/actions/runs/36338037260>
+- Commit: `bf22be38d67e225f212be3681fe6ab63f7e23e95`
+- Image: `pavancoderacr.azurecr.io/modelgate-webhook:bf22be38d67e225f212be3681fe6ab63f7e23e95`
+- Digest: `sha256:542c4a37afd5d65c9b52f6ac7e6aaa29d0ad69d289add40ed8b74184f22c0859`
+- Committed evidence: [`bench/results/azure-acr-image-evidence.json`](../bench/results/azure-acr-image-evidence.json)
