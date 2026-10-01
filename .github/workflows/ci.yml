@@ -118,6 +118,44 @@ jobs:
           name: cosign-integration-output
           path: cosign-integration-output.txt
 
+  helm-chart:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - name: Lint and render the Helm chart
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          helm lint deploy/helm \
+            --set-string tls.caBundle=dGVzdC1jYS1idW5kbGU= \
+            2>&1 | tee artifacts/helm-lint-output.txt
+          helm template modelgate deploy/helm \
+            --namespace modelgate-system \
+            --set-string tls.caBundle=dGVzdC1jYS1idW5kbGU= \
+            --set image.repository=ghcr.io/pavann19/modelgate \
+            --set image.tag=ci-render \
+            2>&1 | tee artifacts/helm-template-output.yaml >/dev/null
+      - name: Assert Helm refuses a missing CA bundle
+        shell: bash
+        run: |
+          set -o pipefail
+          if helm template modelgate deploy/helm > artifacts/helm-missing-ca-output.txt 2>&1; then
+            cat artifacts/helm-missing-ca-output.txt
+            echo "expected helm template to fail when tls.caBundle is omitted"
+            exit 1
+          fi
+          cat artifacts/helm-missing-ca-output.txt
+          grep -q 'tls.caBundle is required' artifacts/helm-missing-ca-output.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: helm-chart-output
+          path: artifacts/helm-*
+          if-no-files-found: error
+
   # Real kind cluster, real image build, real TLS/RBAC, a real signed and
   # unsigned image pair on ttl.sh, and assertions on what the live webhook
   # does. The full output is uploaded as an artifact, so the claim in

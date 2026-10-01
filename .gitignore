@@ -7,3 +7,7 @@ coverage.out
 
 # Generated per-cluster, never committed: see deploy/kind/deploy.sh.
 deploy/kind/certs/
+
+# Local validation/evidence captures are summarized in docs instead of committed.
+kind-smoke-output*.txt
+.evidence-acr-run-*/

@@ -49,6 +49,9 @@ namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are delibe
   require a cluster-issued webhook TLS secret and matching CA bundle; neither commits private keys.
 - `.github/workflows/azure-acr.yml` — manual Azure Container Registry image evidence workflow; see
   [docs/AZURE_ACR_EVIDENCE.md](docs/AZURE_ACR_EVIDENCE.md).
+- `docs/HELM_INSTALL.md`, `docs/KIND_DEMO.md`, `docs/DENY_EXAMPLES.md` — operator install notes,
+  kind smoke log evidence, and exact denial examples.
+- `docs/VALIDATION.md` — latest local validation result and any exact blockers.
 
 ## Running tests
 
@@ -72,6 +75,8 @@ The webhook requires a TLS secret containing `tls.crt` and `tls.key`, plus the i
 `ValidatingWebhookConfiguration`. For a local kind cluster, `deploy/kind/deploy.sh` generates those
 ephemeral materials and is the end-to-end tested path. For an existing cluster, have cert-manager
 or your platform PKI create `modelgate-webhook-certs` first.
+
+The full Helm runbook is [docs/HELM_INSTALL.md](docs/HELM_INSTALL.md).
 
 Helm refuses to render without the CA bundle, preventing an apparently successful but unusable
 installation:
@@ -133,6 +138,7 @@ Every CI path leaves downloadable evidence on the workflow run, including failur
 | Unit tests | `unit-tests-output`, `coverage` | Build, vet, race-enabled test output, and `coverage.out` when produced |
 | envtest | `envtest-output`, `admission-latency` | End-to-end/benchmark logs and the measured latency JSON when produced |
 | Cosign | `cosign-integration-output` | Real signed-image and unsigned-image integration-test output |
+| Helm chart | `helm-chart-output` | `helm lint`, rendered manifests, and the negative missing-CA render check |
 | Pickle fuzzing | `fuzz-pickle-output` | The 30-second CI fuzz run output |
 | kind smoke test | `kind-smoke-output` | Deployment output and every admission assertion from the real kind cluster |
 | Azure ACR evidence | `azure-acr-image-evidence` | Manual ACR image push metadata and digest for the selected commit |
@@ -140,6 +146,18 @@ Every CI path leaves downloadable evidence on the workflow run, including failur
 The Azure ACR workflow is intentionally image-provenance evidence only. It does not claim AKS,
 Azure Container Apps, or managed production operation; the live admission behavior proof is still
 the `kind-smoke` CI job.
+
+## Demo and denial examples
+
+- [docs/KIND_DEMO.md](docs/KIND_DEMO.md) explains how to rerun the kind demo and points to the
+  latest summarized local and CI evidence.
+- [docs/DENY_EXAMPLES.md](docs/DENY_EXAMPLES.md) includes the exact unsigned-image denial observed
+  in kind and the exact pickle-artifact denial string covered by regression tests.
+- [docs/AZURE_ACR_EVIDENCE.md](docs/AZURE_ACR_EVIDENCE.md) documents the Azure ACR evidence
+  workflow and its boundary: registry publication evidence only, not managed production operation.
+- [docs/VALIDATION.md](docs/VALIDATION.md) records the validation policy and latest local pass:
+  Helm is validated in CI, kind passed locally on October 1, 2026, and raw local evidence files are
+  summarized rather than committed.
 
 ## Status
 
