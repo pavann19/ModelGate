@@ -4,3 +4,9 @@ kind-smoke-output.local.txt
 coverage.out
 *.test
 *.log
+
+deploy/kind/certs
+.evidence-acr-run-*
+kind-smoke-output*.txt
+
+artifacts/private-kind/

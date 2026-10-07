@@ -19,11 +19,16 @@ import (
 
 func main() {
 	var (
-		metricsAddr = flag.String("metrics-bind-address", ":8443", "metrics endpoint address")
-		certDir     = flag.String("cert-dir", "/tmp/k8s-webhook-server/serving-certs", "webhook TLS cert directory")
-		webhookPort = flag.Int("webhook-port", 9443, "webhook server port")
+		metricsAddr        = flag.String("metrics-bind-address", ":8443", "metrics endpoint address")
+		certDir            = flag.String("cert-dir", "/tmp/k8s-webhook-server/serving-certs", "webhook TLS cert directory")
+		registryPolicyPath = flag.String("registry-policy-file", "/etc/modelgate/registry-policy.json", "operator-owned registry destination policy")
+		webhookPort        = flag.Int("webhook-port", 9443, "webhook server port")
 	)
 	flag.Parse()
+	registryPolicy, err := mgwebhook.LoadRegistryPolicy(*registryPolicyPath)
+	if err != nil {
+		exitf("registry destination policy is invalid: %v", err)
+	}
 
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -50,6 +55,7 @@ func main() {
 	// missed because an informer hasn't synced yet.
 	resolver := policy.NewResolver(mgr.GetAPIReader())
 	handler := mgwebhook.NewHandler(resolver)
+	handler.Verifier = mgwebhook.CosignVerifier{RegistryPolicy: registryPolicy}
 
 	mgr.GetWebhookServer().Register("/validate-pods", &webhook.Admission{Handler: handler})
 

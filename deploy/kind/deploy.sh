@@ -12,6 +12,11 @@
 # manually against a local kind cluster.
 set -euo pipefail
 
+if [[ -z "${REGISTRY_POLICY_FILE:-}" || ! -f "$REGISTRY_POLICY_FILE" ]]; then
+  echo "REGISTRY_POLICY_FILE must name an explicitly reviewed registry policy JSON" >&2
+  exit 1
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CERT_DIR="$REPO_ROOT/deploy/kind/certs"
 KUBE_REPO_ROOT="$REPO_ROOT"
@@ -59,6 +64,10 @@ kubectl create secret tls "${SVC}-certs" \
   --cert="$KUBE_CERT_DIR/tls.crt" --key="$KUBE_CERT_DIR/tls.key" \
   -n "$NS" --dry-run=client -o yaml | kubectl apply -f -
 
+echo "==> Installing the operator-supplied registry destination policy"
+KUBE_POLICY_FILE="$REGISTRY_POLICY_FILE"
+if command -v cygpath >/dev/null 2>&1; then KUBE_POLICY_FILE="$(cygpath -w "$REGISTRY_POLICY_FILE")"; fi
+kubectl -n "$NS" create secret generic modelgate-registry-policy --from-file="registry-policy.json=$KUBE_POLICY_FILE" --dry-run=client -o yaml | kubectl apply -f -
 echo "==> Deploying the webhook"
 kubectl apply -f "$KUBE_REPO_ROOT/deploy/manifests/deployment.yaml"
 kubectl -n "$NS" rollout restart deployment/modelgate-webhook
@@ -71,8 +80,7 @@ kubectl patch validatingwebhookconfiguration modelgate --type='json' \
   -p="[{\"op\": \"replace\", \"path\": \"/webhooks/0/clientConfig/caBundle\", \"value\":\"$CA_BUNDLE\"}]"
 
 echo "==> Done. Remember: you still need a ModelGatePolicy per namespace you test in"
-echo "    (see docs/DECISIONS.md's M1 fail-closed-on-no-policy behavior), and a real"
+echo "    (see docs/ARCHITECTURE.md's fail-closed-on-no-policy behavior), and a real"
 echo "    signed/unsigned image pair reachable from inside the cluster to exercise"
-echo "    cosign verification end to end (a local-only registry is NOT reachable from"
-echo "    pod network without extra kind network wiring -- ttl.sh or another public"
-echo "    registry is the simplest way to get a real signed/unsigned pair for this)."
+echo "    admission with the configured registry. Use private-registry-smoke.py for"
+echo "    controlled TLS/cryptographic fixtures; redirect-dependent registries are unsupported."

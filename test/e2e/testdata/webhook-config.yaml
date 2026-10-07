@@ -13,7 +13,7 @@ webhooks:
       # mutable field on an already-admitted Pod (this is how
       # `kubectl set image pod/x` works), so CREATE-only rules let an
       # attacker swap in an unsigned/malicious image after admission and
-      # never have it checked. See docs/DECISIONS.md ("M3 adversarial bypass
+      # never have it checked. See docs/THREAT_MODEL.md ("M3 adversarial bypass
       # suite") -- this was empirically confirmed, not assumed.
       - apiGroups: [""]
         apiVersions: ["v1"]

@@ -36,6 +36,15 @@ Install the CRD:
 kubectl apply -f deploy/crd/modelgate.dev_modelgatepolicies.yaml
 ```
 
+Create an operator-reviewed registry destination Secret before installing:
+
+```bash
+kubectl -n modelgate-system create secret generic modelgate-registry-policy \
+  --from-file=registry-policy.json=/secure/reviewed-registry-policy.json
+```
+
+See [registry security](REGISTRY_SECURITY.md) for the host/CIDR JSON, private CA and authentication contract.
+
 Install or upgrade the chart with the CA that signed `tls.crt`:
 
 ```bash
@@ -45,7 +54,7 @@ helm upgrade --install modelgate deploy/helm \
   --namespace modelgate-system \
   --set-string tls.caBundle="$CA_BUNDLE" \
   --set image.repository=ghcr.io/pavann19/modelgate \
-  --set image.tag=<immutable-tag> \
+  --set image.tag=<commit-specific-tag> \
   --set failurePolicy=Fail \
   --set timeoutSeconds=15
 ```
@@ -94,7 +103,7 @@ helm upgrade --install modelgate deploy/helm \
   --namespace modelgate-system \
   --set-string tls.caBundle="$CA_BUNDLE" \
   --set image.repository=ghcr.io/pavann19/modelgate \
-  --set image.tag=<immutable-tag> \
+  --set image.tag=<commit-specific-tag> \
   --set metrics.serviceMonitor.enabled=true
 ```
 
@@ -105,3 +114,14 @@ kubectl -n modelgate-system port-forward service/modelgate-webhook 8080:8080
 curl -s http://127.0.0.1:8080/metrics | grep '^modelgate_admission_'
 ```
 
+
+## Operational boundary
+
+Cluster policy writers are security administrators. Do not grant their rights to workload users.
+The chart excludes its own namespace and kube-system; protect both from tenant workloads.
+Use digest-pinned workload images. The deployed webhook image itself currently uses a tag; verify publication provenance before
+deployment. Docker build stages and the cosign source image are digest-pinned.
+Model files require a separately designed read-only mount; the chart does not configure one.
+Metrics are unauthenticated. NetworkPolicy, certificate rotation, registry egress restrictions,
+high availability and an outage-recovery procedure require platform-specific configuration.
+TCP probes only establish a listening socket, not policy/registry health.

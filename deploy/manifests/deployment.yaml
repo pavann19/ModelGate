@@ -16,11 +16,25 @@ spec:
         app: modelgate-webhook
     spec:
       serviceAccountName: modelgate-webhook
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: webhook
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
           image: modelgate-webhook:kind
           imagePullPolicy: IfNotPresent
           args:
+            - --registry-policy-file=/etc/modelgate/registry-policy.json
             - --webhook-port=9443
             - --cert-dir=/tmp/k8s-webhook-server/serving-certs
             - --metrics-bind-address=:8080
@@ -30,6 +44,8 @@ spec:
             - containerPort: 8080
               name: metrics
           volumeMounts:
+            - {name: registry-policy, mountPath: /etc/modelgate, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
             - name: certs
               mountPath: /tmp/k8s-webhook-server/serving-certs
               readOnly: true
@@ -44,6 +60,10 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
       volumes:
+        - name: registry-policy
+          secret: {secretName: modelgate-registry-policy}
+        - name: tmp
+          emptyDir: {sizeLimit: 128Mi}
         - name: certs
           secret:
             secretName: modelgate-webhook-certs

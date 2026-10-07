@@ -1,5 +1,5 @@
 // Package artifact validates model artifact files: it confirms a file is a
-// well-formed safetensors file (not a disguised pickle) and that its SHA-256
+// safetensors-framed file (not a disguised pickle) and that its SHA-256
 // matches an expected value from an allow-list.
 package artifact
 
@@ -30,7 +30,7 @@ var ErrNotSafetensors = fmt.Errorf("artifact: not a valid safetensors file")
 // the expected value from the allow-list.
 var ErrHashMismatch = fmt.Errorf("artifact: SHA-256 does not match allow-list entry")
 
-// Validate checks that data is a well-formed safetensors file whose SHA-256
+// Validate checks that data is a safetensors-framed file whose SHA-256
 // digest equals expectedSHA256Hex (case-insensitive hex). It first checks
 // for pickle signatures, since a disguised pickle must never be admitted
 // even if it happens to also pass a loose header check.
@@ -68,6 +68,9 @@ func checkSafetensorsHeader(data []byte) error {
 	var parsed map[string]json.RawMessage
 	if err := json.Unmarshal(header, &parsed); err != nil {
 		return fmt.Errorf("%w: header is not valid JSON: %v", ErrNotSafetensors, err)
+	}
+	if parsed == nil {
+		return fmt.Errorf("%w: header must be an object", ErrNotSafetensors)
 	}
 	return nil
 }
