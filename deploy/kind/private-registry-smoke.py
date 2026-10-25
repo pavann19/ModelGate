@@ -31,11 +31,27 @@ results=[]
 def run(obj,allowed,label):
  p=subprocess.run(ctx+['create','--dry-run=server','-f','-','-o','json'],input=json.dumps(obj),text=True,capture_output=True)
  ok=(p.returncode==0)==allowed and (allowed or 'denied the request' in p.stderr)
- results.append(dict(case=label,expectedAllowed=allowed,exit=p.returncode,passCheck=ok,output=p.stdout if allowed else p.stderr))
+ results.append(dict(case=label,expectedAllowed=allowed,exit=p.returncode,passCheck=ok,output=p.stdout if p.returncode==0 else p.stderr))
  print(label, 'PASS' if ok else 'FAIL',p.stderr[:350],flush=True)
  return p
 def pod(repo='signed',ns='default',**spec):
  return dict(apiVersion='v1',kind='Pod',metadata=dict(name='release-check',namespace=ns),spec=dict(containers=[dict(name='check',image=b['host']+'/'+repo+'@'+b['digest'])],**spec))
+
+def wait_for_admission():
+ # Deployment readiness can precede Service routing on a newly started cluster.
+ # Retry only connection refusal, never an actual admission denial or TLS failure.
+ deadline=time.monotonic()+30
+ while True:
+  p=subprocess.run(ctx+['create','--dry-run=server','--request-timeout=15s','-f','-','-o','json'],input=json.dumps(pod()),text=True,capture_output=True)
+  if p.returncode==0:
+   print('Admission startup round-trip ready',flush=True)
+   return
+  print(p.stderr,flush=True)
+  if 'failed calling webhook' not in p.stderr or 'connection refused' not in p.stderr or time.monotonic()>=deadline:
+   raise RuntimeError('Admission startup round-trip failed: '+p.stderr)
+  time.sleep(1)
+
+wait_for_admission()
 for repo in ['signed','authenticated','unsigned','wrong-signature','wrong-artifact','wrong-repository','malformed-signature','bad-content','redirect-untrusted','redirect-private','redirect-loopback','auth-untrusted','slow-registry','partial-response','oversized-manifest','secret-error']:
  run(pod(repo),repo in ['signed','authenticated'],repo)
 for host in ['127.0.0.1:443','169.254.169.254','100.100.100.200','unapproved.example']:
