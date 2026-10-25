@@ -31,7 +31,7 @@ Cosign transparency-log verification is disabled; the operator-managed public ke
 - [Admission examples](docs/DENY_EXAMPLES.md)
 - [Historical ACR publication evidence](docs/AZURE_ACR_EVIDENCE.md)
 
-Build with Go 1.27.1: `go build ./cmd/webhook`. The runtime image includes cosign 2.4.1.
+Build with Go 1.27.3: `go build ./cmd/webhook`. The runtime image includes cosign 2.4.1.
 Run dependency-free unit suites with `go test ./internal/... ./api/... ./cmd/...`.
 `go test ./...` additionally requires envtest assets, Docker and cosign; it is not a unit-only command.
 See the testing guide for prerequisite setup and the distinction between mocks and real infrastructure.

@@ -1,6 +1,6 @@
 # Testing and evaluation
 
-Use Go 1.27.1. Run:
+Use Go 1.27.3. Run:
 
 ```sh
 go test ./internal/... ./api/... ./cmd/...
@@ -30,7 +30,7 @@ model-file verification, scheduling, kubelet behavior or cluster scale. Its trac
 raw sample retained for reproducibility, not a product performance claim. Running it overwrites that
 file; preserve the original and compare run provenance before publishing any result.
 
-CI uses commit-pinned actions, Go 1.27.1, cosign 2.4.1 and Helm 3.16.4. Docker base/cosign source images are digest-pinned.
+CI uses commit-pinned actions, Go 1.27.3, cosign 2.4.1 and Helm 3.16.4. Docker base/cosign source images are digest-pinned.
 CI configures unit/race/build/vet, envtest, cosign, pickle fuzz, chart rendering and kind jobs.
 Job definitions are reproducible instructions; execution and branch-protection status require live
 verification. A pinned govulncheck command runs in the unit job. No image scanner, secret scanner or SBOM job is currently present.

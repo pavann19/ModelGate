@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.3'
       # test/e2e/... and bench/... require KUBEBUILDER_ASSETS (a real
       # kube-apiserver + etcd) -- that's the envtest job below, not this one.
       # test/cosign/... requires the real cosign binary -- that's the
@@ -30,7 +30,7 @@ jobs:
           {
             go build ./...
             go vet ./...
-            go run golang.org/x/vuln/cmd/govulncheck@v1.1.4 ./...
+            go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
             go test $(go list ./... | grep -vE '/(test/e2e|bench|test/cosign)') -v -race -coverprofile=coverage.out
           } 2>&1 | tee unit-tests-output.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.3'
       - name: Install setup-envtest
         run: go install sigs.k8s.io/controller-runtime/tools/setup-envtest@${SETUP_ENVTEST_VERSION}
       - name: Download envtest binaries (kube-apiserver, etcd)
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.3'
       - name: Fuzz the pickle detector against safetensors/ONNX/GGUF-shaped inputs
         run: |
           set -o pipefail
@@ -110,7 +110,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: '1.27.1'
+          go-version: '1.27.3'
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
         with:
           cosign-release: v2.4.1
