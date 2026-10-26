@@ -16,7 +16,9 @@
 #
 # Prerequisites: docker, kind (with a cluster already created, named by
 # $CLUSTER, default "modelgate"), kubectl, openssl, cosign, envsubst.
-# Network access to ttl.sh is needed (see sign-test-images.sh for why).
+# Historical public-registry diagnostic. Requires REGISTRY_POLICY_FILE.
+# Redirect-dependent ttl.sh requests fail closed under the supported contract.
+# CI uses private-registry-smoke.py; the original Pod fixtures remain intact.
 set -euo pipefail
 
 CLUSTER="${CLUSTER:-modelgate}"

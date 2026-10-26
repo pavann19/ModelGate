@@ -6,7 +6,7 @@ metadata:
 ---
 # The webhook resolves the ModelGatePolicy for a pod's namespace on every
 # admission request via a direct (uncached) API read -- see
-# internal/policy.Resolver and docs/DECISIONS.md for why -- so it needs
+# internal/policy.Resolver and docs/ARCHITECTURE.md for why -- so it needs
 # read access to that CRD across all namespaces, not just its own.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -15,7 +15,7 @@ metadata:
 rules:
   - apiGroups: ["modelgate.dev"]
     resources: ["modelgatepolicies"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

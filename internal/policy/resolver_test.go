@@ -114,7 +114,7 @@ func TestResolve_NamespacesAreIsolated(t *testing.T) {
 	}
 }
 
-func TestResolve_MultiplePoliciesInOneNamespacePicksOldest(t *testing.T) {
+func TestResolve_MultiplePoliciesFailClosed(t *testing.T) {
 	older := &modelgatev1alpha1.ModelGatePolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "older", Namespace: "ns-a",
@@ -132,10 +132,21 @@ func TestResolve_MultiplePoliciesInOneNamespacePicksOldest(t *testing.T) {
 	c := newFakeReader(t, newer, older).Build()
 	r := NewResolver(c)
 	res, err := r.Resolve(context.Background(), "ns-a")
-	if err != nil {
-		t.Fatal(err)
+	if err == nil || res.Config != nil || res.Exempt {
+		t.Fatalf("ambiguous policies must fail closed: %+v %v", res, err)
 	}
-	if res.Config.CosignPublicKeyPEM != "old-key" {
-		t.Fatalf("expected the oldest policy (%q) to win, got %q", "old-key", res.Config.CosignPublicKeyPEM)
+}
+
+func TestResolveRejectsDuplicateArtifactsAndUndocumentedExemption(t *testing.T) {
+	for _, spec := range []modelgatev1alpha1.ModelGatePolicySpec{
+		{Exempt: true},
+		{Exempt: true, ExemptionReason: "  \t"},
+		{ArtifactAllowList: []modelgatev1alpha1.ArtifactAllowListEntry{{ID: "same", SHA256: "a"}, {ID: "same", SHA256: "b"}}},
+	} {
+		p := &modelgatev1alpha1.ModelGatePolicy{ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "ns"}, Spec: spec}
+		res, err := NewResolver(newFakeReader(t, p).Build()).Resolve(context.Background(), "ns")
+		if err == nil || res.Exempt || res.Config != nil {
+			t.Fatalf("invalid policy accepted: %+v %v", res, err)
+		}
 	}
 }

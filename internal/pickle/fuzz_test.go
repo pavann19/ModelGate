@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// This file measures the false-positive rate the M3 plan asked for: does
+// This file measures the false-positive rate the format contract asked for: does
 // the opcode heuristic ever flag a real, non-pickle model format as a
 // pickle? Rather than hand-curating a small corpus of real downloaded model
 // files (which this repo has no network access or storage budget for),

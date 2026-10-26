@@ -62,8 +62,7 @@ type ModelGatePolicyStatus struct{}
 
 // ModelGatePolicy declares the ModelGate admission rules for the namespace
 // it is created in. Exactly one ModelGatePolicy per namespace is expected;
-// if more than one exists, the webhook picks the oldest by creation
-// timestamp and logs a warning rather than silently picking arbitrarily.
+// if more than one exists, admission fails closed.
 type ModelGatePolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

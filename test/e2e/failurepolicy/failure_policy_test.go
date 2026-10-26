@@ -2,7 +2,7 @@
 // ValidatingWebhookConfiguration's failurePolicy actually behaves as
 // documented when the ModelGate webhook itself goes unreachable mid-test:
 // failurePolicy: Fail must deny, and failurePolicy: Ignore must admit. This
-// is the M2 exit criterion -- measured for real, not asserted from reading
+// is the failure-semantics contract -- measured for real, not asserted from reading
 // the Kubernetes docs.
 //
 // It is a separate package (not part of test/e2e) because each scenario

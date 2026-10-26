@@ -1,210 +1,55 @@
 # ModelGate
 
-A Kubernetes `ValidatingAdmissionWebhook` that only admits pods whose container images are
-cosign-signed and whose model artifacts are hash-verified, non-pickle files — the supply-chain
-security layer most AI/ML clusters don't enforce at admission time.
+ModelGate is a Go Kubernetes validating admission webhook. It checks Pod CREATE/UPDATE and
+UPDATE of `pods/ephemeralcontainers` against a namespace-scoped `ModelGatePolicy`.
+This release candidate is under security review; it is not production-certified.
 
-See [docs/DECISIONS.md](docs/DECISIONS.md) for design trade-offs and an honest status of what is
-and isn't verified yet.
+The [platform case study](docs/CASE_STUDY.md) examines admission under concurrent load,
+signing-key rotation, verification saturation and webhook outage/recovery. Three local runs
+retained 1,840 API-level measurements with real registry traffic and cosign verification.
+All 60 intentional-outage requests failed closed; admission resumed 6.05–9.21 seconds after
+scale-up. These are single-node kind observations, with raw samples and contention limits
+published alongside the results; they are not production capacity or availability guarantees.
 
-## What it checks
+## Enforcement
 
-Rules are declared per namespace via a `ModelGatePolicy` custom resource (one per namespace), and
-are enforced on both pod creation *and* update (see [docs/DECISIONS.md](docs/DECISIONS.md) for why
-CREATE-only was found to be a real bypass and fixed in M3):
+- The production verifier requires `repository@sha256:<64 lowercase hex characters>` and verifies
+  its cosign signature against the policy's public key. Mutable tags are denied.
+- All regular, init and ephemeral container images are checked.
+- `hostPID`, `hostIPC`, `hostNetwork`, `hostPath` and privileged containers are denied.
+- An optional `modelgate.dev/model-artifact` annotation selects a policy-allow-listed local file
+  in the webhook filesystem. Its SHA-256 and JSON-object safetensors framing are checked, and
+  recognized pickle/PyTorch archives are rejected. This is not full tensor-schema validation.
+- Missing, ambiguous or unreadable policies fail closed. Explicit policy exemptions bypass every
+  check and require a reason. The installation excludes kube-system and the webhook namespace.
 
-1. **Image signatures** — every container (including init and ephemeral containers, and images
-   swapped in after creation via `kubectl set image` or `kubectl debug`) must be signed with
-   `cosign` against the namespace's policy's pinned public key.
-2. **Model artifacts** — a pod annotated `modelgate.dev/model-artifact: <id>` must reference an
-   artifact on that namespace's policy's allow-list, and the artifact must be a well-formed
-   `safetensors` file (not a pickle in disguise) whose SHA-256 matches the allow-listed hash.
-3. **Host-level access** — `hostPID`, `hostNetwork`, `hostPath` volumes, and `privileged: true`
-   containers are denied unconditionally (not configurable per policy).
+The artifact annotation is optional. ModelGate does not discover unannotated models, bind a
+webhook-local file to workload mounts, enforce provenance/SBOMs, or monitor running containers.
+Cosign transparency-log verification is disabled; the operator-managed public key is the trust root.
 
-A namespace with no `ModelGatePolicy` is **denied by default** (fail closed), and a policy can set
-`exempt: true` (with a required `exemptionReason`) to explicitly bypass all checks for its
-namespace — see [docs/DECISIONS.md](docs/DECISIONS.md) for why both are deliberate, not oversights.
+## Read and run
 
-## Layout
+- [Platform case study](docs/CASE_STUDY.md)
+- [Real admission load and failure experiment](docs/PLATFORM_EVALUATION.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security and trust boundaries](SECURITY.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [Testing and evaluation](docs/TESTING.md)
+- [Helm deployment](docs/HELM_INSTALL.md)
+- [kind integration](docs/KIND_DEMO.md)
+- [Admission examples](docs/DENY_EXAMPLES.md)
+- [Historical ACR publication evidence](docs/AZURE_ACR_EVIDENCE.md)
 
-- `api/v1alpha1` — the `ModelGatePolicy` CRD types.
-- `internal/pickle` — pickle detector: checks for the `PROTO` opcode at a fixed position (raw
-  pickle streams and PyTorch zip archives), fuzz-tested against safetensors/ONNX/GGUF-shaped
-  inputs (`fuzz_test.go`) — see [docs/DECISIONS.md](docs/DECISIONS.md) for why a byte-density
-  heuristic was tried first and broke three times under fuzzing before landing on this design.
-- `internal/artifact` — safetensors header/hash validation.
-- `internal/policy` — `Resolver`, which looks up the `ModelGatePolicy` for a pod's namespace.
-- `internal/webhook` — the admission `Handler` and cosign verifier.
-- `cmd/webhook` — the server binary.
-- `deploy/crd` — the generated `ModelGatePolicy` CRD manifest (`controller-gen`).
-- `test/e2e` — envtest suites: CRD/policy selection, an adversarial bypass suite
-  (`adversarial_bypass_test.go`), and `test/e2e/failurepolicy` for fail-open/fail-closed.
-- `bench` — the admission latency benchmark and its committed, measured results.
-- `test/cosign` — real `cosign` sign/verify integration test against a local registry.
-- `deploy/manifests`, `deploy/kind` — the real `kind` cluster deployment (namespace, RBAC,
-  Deployment/Service, `ValidatingWebhookConfiguration`) and the scripts that generate its TLS
-  certs and a real signed/unsigned test image pair.
-- `deploy/kustomization.yaml`, `deploy/helm` — Kustomize and Helm installation entry points. Both
-  require a cluster-issued webhook TLS secret and matching CA bundle; neither commits private keys.
-- `.github/workflows/azure-acr.yml` — manual Azure Container Registry image evidence workflow; see
-  [docs/AZURE_ACR_EVIDENCE.md](docs/AZURE_ACR_EVIDENCE.md).
-- `docs/HELM_INSTALL.md`, `docs/KIND_DEMO.md`, `docs/DENY_EXAMPLES.md` — operator install notes,
-  kind smoke log evidence, and exact denial examples.
-- `docs/VALIDATION.md` — latest local validation result and any exact blockers.
+Build with Go 1.27.3: `go build ./cmd/webhook`. The runtime image includes cosign 2.4.1.
+Run dependency-free unit suites with `go test ./internal/... ./api/... ./cmd/...`.
+`go test ./...` additionally requires envtest assets, Docker and cosign; it is not a unit-only command.
+See the testing guide for prerequisite setup and the distinction between mocks and real infrastructure.
 
-## Running tests
+TLS provisioning, registry destination policy and ModelGatePolicy management are operator responsibilities.
+[Registry security](docs/REGISTRY_SECURITY.md) describes required host/CIDR trust and private registry configuration.
+The Helm chart requires a CA bundle; raw Kustomize manifests require CA injection before use.
+Keep `failurePolicy: Fail`. A webhook outage blocks protected Pod admissions.
 
-Run the local preflight from PowerShell to install the pinned `setup-envtest` release and resolve
-the pinned Kubernetes 1.31.0 API server and etcd binaries:
-
-```powershell
-.\hack\preflight.ps1
-```
-
-The script prints the `KUBEBUILDER_ASSETS` command needed before running the envtest suites. Unit
-tests that do not need envtest can be run directly:
-
-```bash
-go test ./...
-```
-
-## Install with Helm or Kustomize
-
-The webhook requires a TLS secret containing `tls.crt` and `tls.key`, plus the issuing CA in the
-`ValidatingWebhookConfiguration`. For a local kind cluster, `deploy/kind/deploy.sh` generates those
-ephemeral materials and is the end-to-end tested path. For an existing cluster, have cert-manager
-or your platform PKI create `modelgate-webhook-certs` first.
-
-The full Helm runbook is [docs/HELM_INSTALL.md](docs/HELM_INSTALL.md).
-
-Helm refuses to render without the CA bundle, preventing an apparently successful but unusable
-installation:
-
-```bash
-CA_BUNDLE="$(base64 -w0 ca.crt)"
-kubectl apply -f deploy/crd/modelgate.dev_modelgatepolicies.yaml
-helm upgrade --install modelgate deploy/helm \
-  --namespace modelgate-system --create-namespace \
-  --set-string tls.caBundle="$CA_BUNDLE" \
-  --set image.repository=ghcr.io/pavann19/modelgate \
-  --set image.tag=<immutable-tag>
-```
-
-The Kustomize base is rendered with `kubectl kustomize deploy`. Set its image to an immutable tag,
-apply it, and inject the CA bundle immediately from the same trusted certificate source:
-
-```bash
-kubectl apply -k deploy
-kubectl patch --local -f deploy/manifests/validatingwebhookconfiguration.yaml \
-  --type=json -p="[{\"op\":\"add\",\"path\":\"/webhooks/0/clientConfig/caBundle\",\"value\":\"$CA_BUNDLE\"}]" \
-  -o yaml | kubectl apply -f -
-```
-
-Do not send workloads through ModelGate until the CA is injected and the Deployment is Ready. The
-default `failurePolicy: Fail` deliberately rejects admissions when the webhook cannot be reached.
-
-## Inspect admission decisions and metrics
-
-Every request emits one structured `admission decision` log with request UID, operation, namespace,
-pod, bounded outcome/reason, and handler duration. Inspect or follow them with:
-
-```bash
-kubectl -n modelgate-system logs deployment/modelgate-webhook --since=10m \
-  | grep 'admission decision'
-kubectl -n modelgate-system logs deployment/modelgate-webhook -f
-```
-
-The controller-runtime metrics endpoint is exposed on the Service's `metrics` port. Port-forward it
-locally and inspect the ModelGate series:
-
-```bash
-kubectl -n modelgate-system port-forward service/modelgate-webhook 8080:8080
-curl -s http://127.0.0.1:8080/metrics \
-  | grep '^modelgate_admission_'
-```
-
-`modelgate_admission_decisions_total{outcome,reason}` keeps allow/deny/error reasons separate, and
-`modelgate_admission_duration_seconds{outcome}` provides latency buckets for p50/p95/p99 queries.
-The Helm chart can also create a `ServiceMonitor` with
-`--set metrics.serviceMonitor.enabled=true` when the Prometheus Operator CRDs are installed.
-
-## CI artifacts
-
-Every CI path leaves downloadable evidence on the workflow run, including failure output:
-
-| CI check | Artifact | Contents |
-| --- | --- | --- |
-| Unit tests | `unit-tests-output`, `coverage` | Build, vet, race-enabled test output, and `coverage.out` when produced |
-| envtest | `envtest-output`, `admission-latency` | End-to-end/benchmark logs and the measured latency JSON when produced |
-| Cosign | `cosign-integration-output` | Real signed-image and unsigned-image integration-test output |
-| Helm chart | `helm-chart-output` | `helm lint`, rendered manifests, and the negative missing-CA render check |
-| Pickle fuzzing | `fuzz-pickle-output` | The 30-second CI fuzz run output |
-| kind smoke test | `kind-smoke-output` | Deployment output and every admission assertion from the real kind cluster |
-| Azure ACR evidence | `azure-acr-image-evidence` | Manual ACR image push metadata and digest for the selected commit |
-
-The Azure ACR workflow is intentionally image-provenance evidence only. It does not claim AKS,
-Azure Container Apps, or managed production operation; the live admission behavior proof is still
-the `kind-smoke` CI job.
-
-## Demo and denial examples
-
-- [docs/KIND_DEMO.md](docs/KIND_DEMO.md) explains how to rerun the kind demo and points to the
-  latest summarized local and CI evidence.
-- [docs/DENY_EXAMPLES.md](docs/DENY_EXAMPLES.md) includes the exact unsigned-image denial observed
-  in kind and the exact pickle-artifact denial string covered by regression tests.
-- [docs/AZURE_ACR_EVIDENCE.md](docs/AZURE_ACR_EVIDENCE.md) documents the Azure ACR evidence
-  workflow and its boundary: registry publication evidence only, not managed production operation.
-- [docs/VALIDATION.md](docs/VALIDATION.md) records the validation policy and latest local pass:
-  Helm is validated in CI, kind passed locally on October 1, 2026, and raw local evidence files are
-  summarized rather than committed.
-
-## Status
-
-ModelGate's build plan (MVP through M3) is implemented. Each highlight below names the test or CI
-job that backs it; the known gaps are listed at the end.
-
-- MVP + M1 + M2: admission logic, the `ModelGatePolicy` CRD, per-namespace policy selection, and
-  measured fail-open/fail-closed behavior — see prior sections of
-  [docs/DECISIONS.md](docs/DECISIONS.md).
-- **M3 found two real bypasses the build plan assumed didn't exist** (image swap after admission
-  via `kubectl set image`, and `kubectl debug`'s ephemeral-container subresource), verified them
-  empirically against a real API server, and fixed both by watching `UPDATE` and the
-  `pods/ephemeralcontainers` subresource — not just documenting them as accepted limitations.
-- **Fuzzing the pickle detector found and fixed a real false-positive — three times before it
-  actually stuck.** Two threshold-based fixes each looked done after a short local fuzz run and
-  were each broken by the next round of fuzzing (one caught by CI itself, on the very next push).
-  The third fix changed the detection strategy entirely (a fixed-position `PROTO`-opcode check
-  instead of counting matching bytes anywhere in the buffer, which a fuzzer can always construct
-  around) and held for 47.6 million fuzz executions over 5 minutes. CI fuzzes continuously on every
-  push — see [docs/DECISIONS.md](docs/DECISIONS.md) for the full sequence, including the meta-lesson
-  about not treating one green fuzz run as proof.
-- **A measured admission latency benchmark** against a real API server (envtest: one local
-  kube-apiserver process, no kubelet or kind cluster), 200 real admission round trips. The committed
-  file, [bench/results/admission_latency.json](bench/results/admission_latency.json), was measured on
-  a Windows dev machine: p50 2.24 ms, p99 6.16 ms. CI runs the same benchmark on Linux and uploads its
-  own result as a per-run artifact (not committed); the latest run measured p50 1.94 ms, p99 2.89 ms.
-  Both are single-process, single-run numbers and not comparable to a multi-node cluster.
-- TOCTOU (artifact changes after admission) is documented as a permanent, architectural scope limit
-  of an admission-webhook-only design, not a gap that was missed.
-- **Real cosign verification is now closed too**: [test/cosign/cosign_integration_test.go](test/cosign/cosign_integration_test.go)
-  runs the real `cosign` binary against a real local registry, a real signed image, and a real
-  (genuinely different, unsigned) image, calling the exact `CosignVerifier` type wired into
-  production — not a fake. Runs as its own CI job.
-- **A real `kind` cluster deployment found and fixed four real bugs** that no fake-based test could
-  have surfaced: the Docker image never actually contained the `cosign` binary it shells out to
-  (only documented as a requirement, never implemented), a cluster-wide webhook with no
-  `namespaceSelector` would have deadlocked the cluster's own control plane, the webhook's RBAC was
-  never defined, and the default 5s timeout was too short for cosign's real network round trip
-  (raised to 15s, re-verified). `deploy/kind/smoke.sh` now runs in CI (`kind-smoke` job) on a fresh
-  kind cluster: the signed pod is admitted and the unsigned, privileged, hostNetwork and hostPath
-  pods are each denied by the webhook, and the captured output is uploaded as the
-  `kind-smoke-output` artifact. It needs outbound access to `ttl.sh` (a public registry). See
-  [docs/DECISIONS.md](docs/DECISIONS.md) for the full write-up.
-
-**Known gaps** (details in [docs/DECISIONS.md](docs/DECISIONS.md)): pickle protocol 0/1 streams
-(no `PROTO` prefix) are not detected; TOCTOU after admission is out of scope for an admission
-webhook; cosign verification skips the transparency log by design (the pinned key is the trust
-anchor); the latency numbers are single-process envtest runs, not a multi-node cluster.
-
-ModelGate is verified in CI and kind; it has not been operated on a managed production cluster.
+Metrics and structured decisions are available on port 8080 and container logs. Metrics are
+unauthenticated; restrict access at the cluster network boundary. No managed production deployment,
+real verification latency, throughput or scale claim is made.

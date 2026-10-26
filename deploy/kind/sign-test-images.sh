@@ -61,6 +61,8 @@ echo "==> Generating a cosign keypair and signing only $SIGNED_IMAGE" >&2
 )
 
 echo "==> Export these and use with deploy/kind/fixtures/*.yaml (envsubst):" >&2
+SIGNED_IMAGE="$(docker inspect --format='{{index .RepoDigests 0}}' "$SIGNED_IMAGE")"
+UNSIGNED_IMAGE="$(docker inspect --format='{{index .RepoDigests 0}}' "$UNSIGNED_IMAGE")"
 echo "export SIGNED_IMAGE=$SIGNED_IMAGE"
 echo "export UNSIGNED_IMAGE=$UNSIGNED_IMAGE"
 
