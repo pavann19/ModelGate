@@ -4,6 +4,13 @@ ModelGate is a Go Kubernetes validating admission webhook. It checks Pod CREATE/
 UPDATE of `pods/ephemeralcontainers` against a namespace-scoped `ModelGatePolicy`.
 This release candidate is under security review; it is not production-certified.
 
+The [platform case study](docs/CASE_STUDY.md) examines admission under concurrent load,
+signing-key rotation, verification saturation and webhook outage/recovery. Three local runs
+retained 1,840 API-level measurements with real registry traffic and cosign verification.
+All 60 intentional-outage requests failed closed; admission resumed 6.05–9.21 seconds after
+scale-up. These are single-node kind observations, with raw samples and contention limits
+published alongside the results; they are not production capacity or availability guarantees.
+
 ## Enforcement
 
 - The production verifier requires `repository@sha256:<64 lowercase hex characters>` and verifies
@@ -22,6 +29,8 @@ Cosign transparency-log verification is disabled; the operator-managed public ke
 
 ## Read and run
 
+- [Platform case study](docs/CASE_STUDY.md)
+- [Real admission load and failure experiment](docs/PLATFORM_EVALUATION.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Security and trust boundaries](SECURITY.md)
 - [Threat model](docs/THREAT_MODEL.md)

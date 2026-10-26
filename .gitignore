@@ -13,3 +13,5 @@ kind-smoke-output*.txt
 .evidence-acr-run-*/
 
 artifacts/private-kind/
+artifacts/platform-eval/
+platform-eval-output.txt

@@ -172,6 +172,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.27.3'
       - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1
         with:
           cluster_name: modelgate
@@ -183,6 +186,14 @@ jobs:
         run: |
           set -o pipefail
           python3 deploy/kind/private-registry-smoke.py 2>&1 | tee kind-smoke-output.txt
+      - name: Measure real admission and controlled failure recovery
+        run: |
+          set -o pipefail
+          python3 deploy/kind/platform-eval.py \
+            --context kind-modelgate \
+            --confirm-disposable-cluster kind-modelgate \
+            --bootstrap artifacts/private-kind/fixture-bootstrap.txt \
+            --output artifacts/platform-eval 2>&1 | tee platform-eval-output.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -190,3 +201,6 @@ jobs:
           path: |
             kind-smoke-output.txt
             artifacts/private-kind/admission-results.json
+            platform-eval-output.txt
+            artifacts/platform-eval/*.json
+            artifacts/platform-eval/*.log

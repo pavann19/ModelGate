@@ -10,3 +10,5 @@ deploy/kind/certs
 kind-smoke-output*.txt
 
 artifacts/private-kind/
+artifacts/platform-eval/
+platform-eval-output.txt
