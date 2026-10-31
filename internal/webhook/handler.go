@@ -14,7 +14,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +41,7 @@ func (FileArtifactFetcher) Fetch(ctx context.Context, ref string) ([]byte, error
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	f, err := os.Open(ref)
+	f, err := openArtifact(ref)
 	if err != nil {
 		return nil, err
 	}
@@ -156,10 +155,17 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		return h.finish(req, pod, started, "denied", "host_access", admission.Denied(reason))
 	}
 
+	// Only share successful verification within this admission and policy snapshot.
+	// Every later request still reads its namespace policy and contacts the registry.
+	verified := make(map[string]struct{})
 	for _, c := range allPodContainers(&pod.Spec) {
+		if _, ok := verified[c.Image]; ok {
+			continue
+		}
 		if err := h.Verifier.VerifySignature(ctx, c.Image, cfg.CosignPublicKeyPEM); err != nil {
 			return h.finish(req, pod, started, "denied", "image_signature", admission.Denied(fmt.Sprintf("unsigned or invalid image %q: %v", c.Image, err)))
 		}
+		verified[c.Image] = struct{}{}
 	}
 
 	if ref, ok := pod.Annotations[ModelArtifactAnnotation]; ok {

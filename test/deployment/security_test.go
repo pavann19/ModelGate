@@ -19,6 +19,12 @@ func TestRawDeploymentSecurityBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := d.Spec.Template.Spec
+	if d.Spec.Replicas == nil || *d.Spec.Replicas < 2 || d.Spec.Strategy.RollingUpdate == nil || d.Spec.Strategy.RollingUpdate.MaxUnavailable.IntVal != 0 {
+		t.Fatal("rollout must preserve available replicas")
+	}
+	if p.TerminationGracePeriodSeconds == nil || *p.TerminationGracePeriodSeconds < 40 || len(p.TopologySpreadConstraints) == 0 {
+		t.Fatal("missing drain budget or node spread")
+	}
 	foundPolicy := false
 	for _, v := range p.Volumes {
 		if v.Name == "registry-policy" && v.Secret != nil && v.Secret.SecretName == "modelgate-registry-policy" {
@@ -29,6 +35,12 @@ func TestRawDeploymentSecurityBoundary(t *testing.T) {
 		t.Fatal("operator-owned registry policy mount missing")
 	}
 	for _, c := range p.Containers {
+		if c.Lifecycle == nil || c.Lifecycle.PreStop == nil || c.Lifecycle.PreStop.Exec == nil || strings.Join(c.Lifecycle.PreStop.Exec.Command, " ") != "/webhook --prestop-delay=10s" {
+			t.Fatal("missing bounded endpoint-withdrawal grace")
+		}
+		if c.StartupProbe == nil || c.ReadinessProbe == nil || c.LivenessProbe == nil || c.ReadinessProbe.HTTPGet == nil || c.ReadinessProbe.HTTPGet.Path != "/readyz" || c.LivenessProbe.HTTPGet == nil || c.LivenessProbe.HTTPGet.Path != "/healthz" {
+			t.Fatal("startup, serving-readiness and process-liveness must be distinct")
+		}
 		if !strings.Contains(strings.Join(c.Args, " "), "--registry-policy-file=/etc/modelgate/registry-policy.json") {
 			t.Fatal("destination policy not wired into production command")
 		}

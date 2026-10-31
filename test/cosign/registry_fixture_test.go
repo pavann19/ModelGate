@@ -63,7 +63,11 @@ func newTLSRegistry(t *testing.T) tlsRegistryFixture {
 		return string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: b}))
 	}
 	certKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "test registry"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(time.Hour), IPAddresses: []net.IP{net.ParseIP(ip)}, KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, BasicConstraintsValid: true, IsCA: true}
+	validity := time.Hour
+	if os.Getenv("MODELGATE_LIVE_REGISTRY_SERVER") == "1" {
+		validity += liveFixtureDuration(t)
+	}
+	template := &x509.Certificate{SerialNumber: big.NewInt(1), Subject: pkix.Name{CommonName: "test registry"}, NotBefore: time.Now().Add(-time.Hour), NotAfter: time.Now().Add(validity), IPAddresses: []net.IP{net.ParseIP(ip)}, KeyUsage: x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign, ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}, BasicConstraintsValid: true, IsCA: true}
 	der, err := x509.CreateCertificate(rand.Reader, template, template, &certKey.PublicKey, certKey)
 	if err != nil {
 		t.Fatal(err)
@@ -82,7 +86,7 @@ func newTLSRegistry(t *testing.T) tlsRegistryFixture {
 	}{Algorithm: struct{ OID asn1.ObjectIdentifier }{asn1.ObjectIdentifier{1, 2, 3, 4}}, Key: asn1.BitString{Bytes: []byte{1, 2, 3}, BitLength: 24}})
 	fixture.unsupportedPublicKey = string(pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: unsupported}))
 	routes := map[string][]byte{}
-	for _, repo := range []string{"signed", "unsigned", "wrong-signature", "wrong-artifact", "wrong-repository", "malformed-signature", "bad-content", "redirect-untrusted", "redirect-private", "redirect-loopback", "auth-untrusted", "authenticated", "slow-registry", "partial-response", "oversized-manifest", "secret-error"} {
+	for _, repo := range []string{"signed", "signed0", "signed1", "signed2", "signed3", "signed4", "signed5", "signed6", "signed7", "unsigned", "wrong-signature", "wrong-artifact", "wrong-repository", "malformed-signature", "bad-content", "redirect-untrusted", "redirect-private", "redirect-loopback", "auth-untrusted", "authenticated", "slow-registry", "partial-response", "oversized-manifest", "secret-error"} {
 		routes["/v2/"+repo+"/manifests/"+fixture.digest] = manifest
 		if repo == "bad-content" {
 			routes["/v2/"+repo+"/manifests/"+fixture.digest] = []byte(`{"schemaVersion":2}`)
@@ -196,5 +200,18 @@ func TestLiveRegistryServer(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Println("REGISTRY_BOOTSTRAP=" + string(b))
-	time.Sleep(15 * time.Minute)
+	time.Sleep(liveFixtureDuration(t))
+}
+
+func liveFixtureDuration(t *testing.T) time.Duration {
+	t.Helper()
+	value := os.Getenv("MODELGATE_FIXTURE_DURATION")
+	if value == "" {
+		return 15 * time.Minute
+	}
+	d, err := time.ParseDuration(value)
+	if err != nil || d < 15*time.Minute || d > 26*time.Hour {
+		t.Fatal("fixture duration must be 15m..26h")
+	}
+	return d
 }
