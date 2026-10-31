@@ -35,6 +35,8 @@ Cosign transparency-log verification is disabled; the operator-managed public ke
 - [Security and trust boundaries](SECURITY.md)
 - [Threat model](docs/THREAT_MODEL.md)
 - [Testing and evaluation](docs/TESTING.md)
+- [Admission lifecycle and upgrade limits](docs/ADMISSION_LIFECYCLE.md)
+- [Optional proposal worker](agent/README.md)
 - [Helm deployment](docs/HELM_INSTALL.md)
 - [kind integration](docs/KIND_DEMO.md)
 - [Admission examples](docs/DENY_EXAMPLES.md)
@@ -53,3 +55,10 @@ Keep `failurePolicy: Fail`. A webhook outage blocks protected Pod admissions.
 Metrics and structured decisions are available on port 8080 and container logs. Metrics are
 unauthenticated; restrict access at the cluster network boundary. No managed production deployment,
 real verification latency, throughput or scale claim is made.
+
+The lifecycle and worker changes have bounded local checks; hosted CI for this
+candidate remains unverified. The local observation stopped at 15 hours and does
+not satisfy the original 24-hour gate. A distinct-image control regressed, and
+the fresh Linux FIFO test did not execute within its compilation budget. See
+the lifecycle guide for scope and remaining validation. No repository license
+has been selected; no additional redistribution permission is asserted.
