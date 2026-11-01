@@ -26,8 +26,14 @@ provide compromise detection or revocation beyond replacement of the configured 
 - Exempt policies and selector-excluded namespaces bypass every check.
 - Running Pods are not revoked after policy or key changes.
 - Metrics have no application authentication. Registry/verifier errors are generic and do not include upstream bodies or subprocess stderr.
-- Fail-closed admission can interrupt cluster operations. One replica and TCP probes provide limited
-  availability assurance; certificate rotation, registry access and recovery must be tested by operators.
+- Fail-closed admission can interrupt cluster operations. The shipped deployment uses two replicas,
+  application readiness checks and graceful draining. These do not establish multi-host availability;
+  placement preferences and a disruption budget cannot survive every host failure. Certificate
+  rotation, registry access and recovery must be tested by operators.
 
 Do not interpret passing mocked tests as evidence of production registry or deployment security.
 Report vulnerabilities privately to the repository owner before disclosing exploit details publicly.
+
+## Supported scope and private reporting
+
+Security fixes target current `main`; no separately supported stable-release series or response-time SLA is declared. Use [GitHub private vulnerability reporting](https://github.com/pavann19/ModelGate/security/advisories/new) with the affected revision and a minimal synthetic reproduction. Do not attach credentials, private infrastructure inventories or personal data, and do not disclose exploit details in a public issue.

@@ -1,5 +1,7 @@
 # ModelGate
 
+[Documentation index](docs/README.md) | [Verified baseline and remaining limits](docs/VERIFICATION.md)
+
 ModelGate is a Go Kubernetes validating admission webhook. It checks Pod CREATE/UPDATE and
 UPDATE of `pods/ephemeralcontainers` against a namespace-scoped `ModelGatePolicy`.
 This release candidate is under security review; it is not production-certified.
@@ -68,3 +70,7 @@ distinct-image control regressed. See the lifecycle guide for the remaining limi
 
 Original project code is licensed under [Apache-2.0](LICENSE). Dependency licenses
 and distribution obligations are retained in [third-party notices](THIRD_PARTY_NOTICES.txt).
+
+## Contributing and maintenance
+
+See [contributing](CONTRIBUTING.md), [maintenance rules](MAINTAINING.md) and [security reporting](SECURITY.md). Changes reach `main` through reviewed PRs and required checks.

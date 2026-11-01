@@ -33,7 +33,9 @@ file; preserve the original and compare run provenance before publishing any res
 CI uses commit-pinned actions, Go 1.27.3, cosign 2.4.1 and Helm 3.16.4. Docker base/cosign source images are digest-pinned.
 CI configures unit/race/build/vet, envtest, cosign, pickle fuzz, chart rendering and kind jobs.
 Job definitions are reproducible instructions; execution and branch-protection status require live
-verification. A pinned govulncheck command runs in the unit job. No image scanner, secret scanner or SBOM job is currently present.
+verification. A pinned govulncheck command runs in the unit job. The current CI includes a pinned secret scan. An image scanner and SBOM job are not present
+in this workflow. The separate Analysis worker workflow tests the Python worker; its result
+does not establish webhook availability. See [verification status](VERIFICATION.md) for exact runs.
 Historical Azure JSON records publication coordinates/digest, not signed provenance or managed hosting.
 
 The retained ttl.sh smoke is incompatible with registries that redirect signature requests. See [kind integration](KIND_DEMO.md); redirect refusal is preserved. Helm installation requires separate live validation beyond its rendering job.

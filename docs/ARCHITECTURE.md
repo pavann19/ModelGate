@@ -21,7 +21,11 @@ Kubernetes API server (caller authentication + RBAC + admission)
 ```
 
 `cmd/webhook` wires the manager and TLS server. There is no HTTP management API,
-reconciling controller, policy database, background queue, or positive verification cache.
+reconciling controller or policy database in the admission service. There is no queue in
+the admission request path and no cross-request positive verification cache. Successful
+verification of the exact image can be reused within one admission request. The optional
+[analysis worker](../agent/README.md) owns a separate SQLite WAL queue and emits proposals;
+it cannot update admission policy or replace signature verification.
 Policy objects live in Kubernetes; status is unused. Every request reads policy afresh.
 No subprocess shell is used: image and key path are separate executable arguments.
 
