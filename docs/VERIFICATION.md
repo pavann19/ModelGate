@@ -17,6 +17,8 @@ The original long soak was stopped by the operator after approximately 15 hours.
 
 ## Safe continuation
 
+The main-promotion PR run [41334209047](https://github.com/pavann19/ModelGate/actions/runs/41334209047) failed its saturation phase: all 32 requests were denied by policy and none reached the saturation outcome. Its 16-worker load equaled the two replicas' aggregate eight-slot capacity. The disposable evaluator now offers eight more concurrent requests than the configured replica capacity, within its existing 64-worker bound. The oracle still requires a saturation rejection and accepts no allowed requests in that phase. The original failure is retained; webhook limits and fail-closed behavior are unchanged.
+
 1. Reproduce the relevant focused regression in an isolated environment before changing behavior.
 2. Preserve failing artifacts and record the new source revision, configuration, workload and outcome separately.
 3. Keep optional AI output advisory; it cannot change admission policy, replay financial writes or operate cluster membership autonomously.

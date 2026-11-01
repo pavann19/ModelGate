@@ -63,6 +63,13 @@ def main():
     evidence['webhookResources'] = deployment['spec']['template']['spec']['containers'][0]['resources']
     evidence['nodeAllocatable'] = [x['status']['allocatable'] for x in json.loads(command(kube + ['get', 'nodes', '-o', 'json']))['items']]
     replicas = deployment['spec'].get('replicas', 1)
+    # Handler has eight admission slots per replica. Offering exactly the
+    # aggregate capacity can legitimately produce zero saturation rejections.
+    # Exceed it without changing the oracle or the webhook's security limits.
+    saturation_concurrency = 8 * (replicas + 1)
+    if not 1 <= replicas or saturation_concurrency > 64:
+        raise RuntimeError('replica count exceeds this bounded saturation experiment')
+    evidence['saturationConcurrency'] = saturation_concurrency
     namespace = 'modelgate-eval'
     # Refuse to overwrite an existing tenant policy/namespace.
     existing = subprocess.run(kube + ['get', 'namespace', namespace, '--ignore-not-found', '-o', 'name'],
@@ -102,7 +109,8 @@ def main():
         for c in [1, 4, 8, 16]:
             phase('signed-c' + str(c), concurrency=c, expected='allowed' if c == 1 else 'overload')
         phase('unsigned', repo='unsigned', expected='policy_denied')
-        phase('bounded-saturation', repo='slow-registry', count=32, concurrency=16, expected='saturation', warmup=0)
+        phase('bounded-saturation', repo='slow-registry', count=2 * saturation_concurrency,
+              concurrency=saturation_concurrency, expected='saturation', warmup=0)
         apply_policy(bootstrap['otherPublicKey'])
         phase('rotated-key-denies-old-signature', count=20, expected='policy_denied', warmup=0)
         apply_policy(bootstrap['publicKey'])
