@@ -29,7 +29,7 @@ p={'apiVersion':'modelgate.dev/v1alpha1','kind':'ModelGatePolicy','metadata':{'n
 command(ctx+['apply','-f','-'],json.dumps(p))
 results=[]
 def run(obj,allowed,label):
- p=subprocess.run(ctx+['create','--dry-run=server','-f','-','-o','json'],input=json.dumps(obj),text=True,capture_output=True)
+ p=subprocess.run(ctx+['create','--dry-run=server','--request-timeout=15s','-f','-','-o','json'],input=json.dumps(obj),text=True,capture_output=True)
  ok=(p.returncode==0)==allowed and (allowed or 'denied the request' in p.stderr)
  results.append(dict(case=label,expectedAllowed=allowed,exit=p.returncode,passCheck=ok,output=p.stdout if p.returncode==0 else p.stderr))
  print(label, 'PASS' if ok else 'FAIL',p.stderr[:350],flush=True)
@@ -62,10 +62,19 @@ o=pod();o['spec']['containers'][0]['securityContext']={'privileged':True};run(o,
 run(pod(volumes=[dict(name='host',hostPath=dict(path='/'))]),False,'hostPath')
 subprocess.run(ctx+['create','namespace','release-no-policy'],capture_output=True)
 run(pod(ns='release-no-policy'),False,'missing-policy')
-barrier=threading.Barrier(12)
+deployment=json.loads(command(ctx+['-n','modelgate-system','get','deployment','modelgate-webhook','-o','json']))
+replicas=deployment['spec']['replicas']
+if replicas < 1 or deployment.get('status',{}).get('readyReplicas',0) != replicas:
+ raise RuntimeError('Saturation fixture requires all configured replicas to be ready')
+# Each replica has eight admission slots. Exceed the combined capacity, retaining
+# a fixed fixture ceiling instead of weakening the overload rejection assertion.
+concurrency=(replicas+1)*16
+if concurrency > 64:
+ raise RuntimeError('Deployment exceeds the bounded saturation fixture budget')
+barrier=threading.Barrier(concurrency,timeout=15)
 def slow(i):
  barrier.wait();return run(pod('slow-registry'),False,'saturation-'+str(i))
-with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:list(pool.map(slow,range(12)))
+with concurrent.futures.ThreadPoolExecutor(max_workers=concurrency) as pool:list(pool.map(slow,range(concurrency)))
 results.append(dict(case='saturation-observed',passCheck=any('capacity' in r['output'] for r in results if r['case'].startswith('saturation-'))))
 control=command(ctx+['-n','kube-system','get','pods','-o','json'])
 controlPods=json.loads(control)['items']
