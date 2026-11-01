@@ -56,9 +56,15 @@ Metrics and structured decisions are available on port 8080 and container logs. 
 unauthenticated; restrict access at the cluster network boundary. No managed production deployment,
 real verification latency, throughput or scale claim is made.
 
-The lifecycle and worker changes have bounded local checks; hosted CI for this
-candidate remains unverified. The local observation stopped at 15 hours and does
-not satisfy the original 24-hour gate. A distinct-image control regressed, and
-the fresh Linux FIFO test did not execute within its compilation budget. See
-the lifecycle guide for scope and remaining validation. No repository license
-has been selected; no additional redistribution permission is asserted.
+The [hosted CI](https://github.com/pavann19/ModelGate/actions/runs/41319123152)
+and [worker checks](https://github.com/pavann19/ModelGate/actions/runs/41319123148)
+passed for runtime revision `e9af94f` on 1 November 2026, including Linux FIFO,
+race, real-signature, API-server, Helm and kind integration checks. Each later
+PR must pass its own checks before promotion. The retained local observation
+stopped at 15 hours and does not satisfy the original 24-hour gate; a
+distinct-image control regressed. See the lifecycle guide for the remaining limits.
+
+## License
+
+Original project code is licensed under [Apache-2.0](LICENSE). Dependency licenses
+and distribution obligations are retained in [third-party notices](THIRD_PARTY_NOTICES.txt).

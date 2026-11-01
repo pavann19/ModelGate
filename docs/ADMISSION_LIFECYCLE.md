@@ -24,8 +24,10 @@ Bounded source checks (Go toolchain from go.mod):
 go test ./internal/... ./cmd/... ./api/... ./test/deployment -p=1 -count=1 -timeout=120s
 ```
 
-Existing CI separately exercises Linux, real Cosign, envtest and Helm.
-Fresh hosted CI and release-image validation remain required before promotion.
+The [verified CI run](https://github.com/pavann19/ModelGate/actions/runs/41319123152)
+for runtime revision e9af94f passed Linux, real Cosign, envtest, Helm and kind
+integration checks. Repeat required checks for each PR merge candidate. A
+separately published release image and its redistribution review remain separate gates.
 The retained lab observation stopped at the user's 15-hour checkpoint; the original
 24-hour gate is incomplete. A matched eight-distinct-image concurrency-four control
 regressed; no general speedup claim is supported. Local cached-image lab tools and
