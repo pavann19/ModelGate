@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -11,7 +12,7 @@ import (
 )
 
 // ErrNoPolicy is returned when a namespace has no ModelGatePolicy at all.
-// The MVP's static config allowed everything by default; the CRD-backed
+// The initial's static config allowed everything by default; the CRD-backed
 // resolver deliberately fails closed instead -- a namespace with no policy
 // object is denied, not silently permitted, since a missing policy is far
 // more likely to be an operator oversight than an intentional "allow all".
@@ -46,8 +47,8 @@ func NewResolver(reader client.Reader) *Resolver {
 
 // Resolve fetches the ModelGatePolicy for namespace. If more than one
 // exists (not expected, but not prevented by the CRD's Namespaced scope
-// alone), it picks the oldest by creation timestamp and logs a warning
-// rather than picking arbitrarily and silently.
+// alone), it rejects the ambiguous policy set, preventing stale or exempt policies
+// from silently taking precedence.
 func (r *Resolver) Resolve(ctx context.Context, namespace string) (Resolution, error) {
 	var list modelgatev1alpha1.ModelGatePolicyList
 	if err := r.Reader.List(ctx, &list, client.InNamespace(namespace)); err != nil {
@@ -57,15 +58,12 @@ func (r *Resolver) Resolve(ctx context.Context, namespace string) (Resolution, e
 		return Resolution{}, fmt.Errorf("%w: namespace %q", ErrNoPolicy, namespace)
 	}
 
+	if len(list.Items) != 1 {
+		return Resolution{}, fmt.Errorf("ambiguous policy: namespace %q has %d policies", namespace, len(list.Items))
+	}
 	chosen := list.Items[0]
-	if len(list.Items) > 1 {
-		for _, p := range list.Items[1:] {
-			if p.CreationTimestamp.Before(&chosen.CreationTimestamp) {
-				chosen = p
-			}
-		}
-		r.logger().Warn("multiple ModelGatePolicy objects found in namespace, using the oldest",
-			"namespace", namespace, "count", len(list.Items), "chosen", chosen.Name)
+	if chosen.Spec.Exempt && strings.TrimSpace(chosen.Spec.ExemptionReason) == "" {
+		return Resolution{}, fmt.Errorf("exempt policy requires an exemption reason")
 	}
 
 	if chosen.Spec.Exempt {
@@ -76,6 +74,9 @@ func (r *Resolver) Resolve(ctx context.Context, namespace string) (Resolution, e
 
 	allowList := make(map[string]string, len(chosen.Spec.ArtifactAllowList))
 	for _, e := range chosen.Spec.ArtifactAllowList {
+		if _, exists := allowList[e.ID]; exists {
+			return Resolution{}, fmt.Errorf("duplicate artifact identifier %q", e.ID)
+		}
 		allowList[e.ID] = e.SHA256
 	}
 	return Resolution{Config: &Config{

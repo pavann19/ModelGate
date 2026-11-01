@@ -1,16 +1,16 @@
 // Package bench measures ModelGate's admission latency against a real
-// kube-apiserver (via envtest), per the M3 exit criterion: "a histogram of
+// kube-apiserver (via envtest), using the recorded evaluation contract: "a histogram of
 // webhook response time ... committed as a real run output (not estimated)".
 //
-// This is not a full kind/kubelet cluster benchmark -- no such deployment
-// exists yet in this repo (see docs/DECISIONS.md) -- so it does not measure
+// This is not a full kind/kubelet cluster benchmark -- a kind deployment
+// exists separately in deploy/kind -- so it does not measure
 // scheduling or kubelet-side effects, and its absolute numbers reflect a
 // single local envtest process, not a production multi-node cluster.
 // What it does measure honestly: the real, wire-level latency of a Pod
 // Create round-tripping through a real kube-apiserver to a real ModelGate
 // webhook server and back, for the full check pipeline (host-access checks,
 // image signature verification via a fake verifier -- see below -- and
-// policy resolution via the real CRD-backed resolver).
+// policy resolution via a static fake resolver).
 //
 // Run it directly with:
 //

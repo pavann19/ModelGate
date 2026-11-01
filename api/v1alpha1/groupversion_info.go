@@ -1,5 +1,5 @@
 // Package v1alpha1 contains the ModelGatePolicy API: the CRD that moves the
-// MVP's hardcoded checks (cosign key, artifact allow-list, namespace
+// initial's hardcoded checks (cosign key, artifact allow-list, namespace
 // exemption) into declarative, per-namespace configuration.
 //
 // +kubebuilder:object:generate=true

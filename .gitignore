@@ -11,3 +11,24 @@ deploy/kind/certs/
 # Local validation/evidence captures are summarized in docs instead of committed.
 kind-smoke-output*.txt
 .evidence-acr-run-*/
+
+artifacts/private-kind/
+artifacts/platform-eval/
+platform-eval-output.txt
+
+# Local credentials, Python caches and runtime agent state; never public evidence.
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+
+.venv/
+venv/
+.pytest_cache/

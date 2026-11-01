@@ -1,12 +1,12 @@
 package e2e
 
-// M3 adversarial bypass suite. Each test targets a specific bypass vector
+// adversarial bypass suite. Each test targets a specific bypass vector
 // named in the build plan and asserts it is actually blocked against a real
 // API server -- not assumed. Two of these were run first as bare probes
 // (no webhook rules for UPDATE / the ephemeralcontainers subresource) and
 // found real, working bypasses; the webhook config was then fixed (see
 // testdata/webhook-config.yaml and deploy/manifests/validatingwebhookconfiguration.yaml)
-// and these tests now assert the fixed behavior. See docs/DECISIONS.md for
+// and these tests now assert the fixed behavior. See docs/THREAT_MODEL.md for
 // the full write-up of what was found and why the fix was made instead of
 // documented as an accepted limitation.
 

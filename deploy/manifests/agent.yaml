@@ -1,0 +1,77 @@
+# Separate single-worker lab topology. No admission path dependency, credentials,
+# or policy-write RBAC. Explicit --offline mode is a deterministic fallback.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: modelgate-analysis
+  namespace: modelgate-system
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 128Mi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: modelgate-analysis
+  namespace: modelgate-system
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app: modelgate-analysis}}
+  template:
+    metadata:
+      labels: {app: modelgate-analysis}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: analysis
+          image: modelgate-analysis:local
+          imagePullPolicy: Never
+          args: [--offline]
+          startupProbe:
+            exec: {command: [python, -B, -m, agent.worker, --db, /data/jobs.sqlite, --health]}
+            periodSeconds: 2
+            failureThreshold: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            exec: {command: [python, -B, -m, agent.worker, --db, /data/jobs.sqlite, --health]}
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec: {command: [python, -B, -m, agent.worker, --db, /data/jobs.sqlite, --health]}
+            periodSeconds: 20
+            failureThreshold: 3
+            timeoutSeconds: 5
+          resources:
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 500m, memory: 256Mi, ephemeral-storage: 128Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: modelgate-analysis}
+        - name: tmp
+          emptyDir: {sizeLimit: 32Mi}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: modelgate-analysis-isolation
+  namespace: modelgate-system
+spec:
+  podSelector: {matchLabels: {app: modelgate-analysis}}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress: []

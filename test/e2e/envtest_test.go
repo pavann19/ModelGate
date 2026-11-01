@@ -325,7 +325,7 @@ func TestEnvtest_RejectsArtifactNotOnAllowList(t *testing.T) {
 	}
 }
 
-// --- M1: ModelGatePolicy CRD selection and exemption tests ---
+// --- ModelGatePolicy CRD selection and exemption tests ---
 
 func TestEnvtest_NamespaceWithoutPolicyIsDeniedFailClosed(t *testing.T) {
 	pod := namedPod(noPolicyNamespace, "orphan-pod", signedImage)

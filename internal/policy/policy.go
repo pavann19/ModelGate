@@ -1,11 +1,7 @@
-// Package policy holds the MVP policy configuration for ModelGate: the
-// cosign public key used to verify image signatures, and the allow-list of
-// model artifact SHA-256 hashes. In M1 this is replaced by a ModelGatePolicy
-// CRD; for the MVP it is loaded once from static config so the admission
-// logic can be built and tested independently of CRD plumbing.
+// Package policy provides namespace admission configuration.
 package policy
 
-// Config is the MVP, hardcoded policy: one cosign public key for image
+// Config is a per-request policy snapshot: one cosign public key for image
 // signature verification, and a map of artifact name -> expected SHA-256.
 type Config struct {
 	// CosignPublicKeyPEM is the PEM-encoded public key every container image

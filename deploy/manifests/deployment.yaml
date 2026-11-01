@@ -6,7 +6,11 @@ metadata:
   labels:
     app: modelgate-webhook
 spec:
-  replicas: 1
+  replicas: 2
+  minReadySeconds: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
   selector:
     matchLabels:
       app: modelgate-webhook
@@ -15,12 +19,35 @@ spec:
       labels:
         app: modelgate-webhook
     spec:
+      terminationGracePeriodSeconds: 40
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector: {matchLabels: {app: modelgate-webhook}}
       serviceAccountName: modelgate-webhook
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: webhook
+          lifecycle:
+            preStop:
+              exec: {command: [/webhook, --prestop-delay=10s]}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
           image: modelgate-webhook:kind
           imagePullPolicy: IfNotPresent
           args:
+            - --registry-policy-file=/etc/modelgate/registry-policy.json
             - --webhook-port=9443
             - --cert-dir=/tmp/k8s-webhook-server/serving-certs
             - --metrics-bind-address=:8080
@@ -30,20 +57,28 @@ spec:
             - containerPort: 8080
               name: metrics
           volumeMounts:
+            - {name: registry-policy, mountPath: /etc/modelgate, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
             - name: certs
               mountPath: /tmp/k8s-webhook-server/serving-certs
               readOnly: true
+          startupProbe:
+            httpGet: {path: /readyz, port: 8081}
+            periodSeconds: 2
+            failureThreshold: 30
           readinessProbe:
-            tcpSocket:
-              port: 9443
-            initialDelaySeconds: 2
-            periodSeconds: 5
+            httpGet: {path: /readyz, port: 8081}
+            periodSeconds: 2
+            failureThreshold: 1
           livenessProbe:
-            tcpSocket:
-              port: 9443
-            initialDelaySeconds: 5
+            httpGet: {path: /healthz, port: 8081}
             periodSeconds: 10
+            failureThreshold: 3
       volumes:
+        - name: registry-policy
+          secret: {secretName: modelgate-registry-policy}
+        - name: tmp
+          emptyDir: {sizeLimit: 128Mi}
         - name: certs
           secret:
             secretName: modelgate-webhook-certs
@@ -63,3 +98,12 @@ spec:
     - port: 8080
       targetPort: 8080
       name: metrics
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: modelgate-webhook
+  namespace: modelgate-system
+spec:
+  minAvailable: 1
+  selector: {matchLabels: {app: modelgate-webhook}}

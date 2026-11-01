@@ -10,7 +10,7 @@ metadata:
 rules:
   - apiGroups: ["modelgate.dev"]
     resources: ["modelgatepolicies"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -30,27 +30,61 @@ kind: Deployment
 metadata:
   name: {{ .Release.Name }}-webhook
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
+  minReadySeconds: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxUnavailable: 0, maxSurge: 1}
   selector:
     matchLabels: {app.kubernetes.io/name: modelgate, app.kubernetes.io/instance: {{ .Release.Name }}}
   template:
     metadata:
       labels: {app.kubernetes.io/name: modelgate, app.kubernetes.io/instance: {{ .Release.Name }}}
     spec:
+      terminationGracePeriodSeconds: 40
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app.kubernetes.io/name: modelgate, app.kubernetes.io/instance: {{ .Release.Name }}}
       serviceAccountName: {{ .Release.Name }}-webhook
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile: {type: RuntimeDefault}
       containers:
         - name: webhook
+          lifecycle:
+            preStop:
+              exec: {command: [/webhook, --prestop-delay=10s]}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: "1", memory: 512Mi}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["--webhook-port=9443", "--cert-dir=/tmp/k8s-webhook-server/serving-certs", "--metrics-bind-address=:8080"]
+          args: ["--registry-policy-file=/etc/modelgate/registry-policy.json", "--webhook-port=9443", "--cert-dir=/tmp/k8s-webhook-server/serving-certs", "--metrics-bind-address=:8080"]
           ports:
             - {name: webhook, containerPort: 9443}
             - {name: metrics, containerPort: 8080}
-          readinessProbe: {tcpSocket: {port: webhook}}
-          livenessProbe: {tcpSocket: {port: webhook}}
+          startupProbe: {httpGet: {path: /readyz, port: 8081}, periodSeconds: 2, failureThreshold: 30}
+          readinessProbe: {httpGet: {path: /readyz, port: 8081}, periodSeconds: 2, failureThreshold: 1}
+          livenessProbe: {httpGet: {path: /healthz, port: 8081}, periodSeconds: 10, failureThreshold: 3}
           volumeMounts:
+            - {name: registry-policy, mountPath: /etc/modelgate, readOnly: true}
+            - {name: tmp, mountPath: /tmp}
             - {name: certs, mountPath: /tmp/k8s-webhook-server/serving-certs, readOnly: true}
       volumes:
+        - name: registry-policy
+          secret: {secretName: {{ required "registryPolicySecret is required" .Values.registryPolicySecret }}}
+        - name: tmp
+          emptyDir: {sizeLimit: 128Mi}
         - name: certs
           secret: {secretName: {{ .Values.tls.secretName }}}
 ---
@@ -110,3 +144,13 @@ spec:
     - port: metrics
       interval: {{ .Values.metrics.serviceMonitor.interval }}
 {{- end }}
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ .Release.Name }}-webhook
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: modelgate, app.kubernetes.io/instance: {{ .Release.Name }}}

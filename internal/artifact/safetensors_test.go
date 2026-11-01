@@ -65,3 +65,10 @@ func TestValidate_RejectsInvalidJSONHeader(t *testing.T) {
 		t.Fatal("expected non-JSON header to be rejected")
 	}
 }
+
+func TestValidateRejectsNullHeader(t *testing.T) {
+	data := buildSafetensors(t, "null", nil)
+	if err := Validate(data, sha256Hex(data)); err == nil {
+		t.Fatal("null header accepted as object")
+	}
+}

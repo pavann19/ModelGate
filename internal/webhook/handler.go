@@ -1,7 +1,7 @@
 // Package webhook implements the ModelGate ValidatingAdmissionWebhook: it
 // admits a pod only if every container image is cosign-signed against the
 // key from the pod namespace's ModelGatePolicy, any model-artifact
-// annotation points at a hash-verified safetensors file on that policy's
+// annotation points at a hash-verified safetensors-framed file on that policy's
 // allow-list, and the pod does not request privileged/host-level access --
 // unless the namespace's policy explicitly (and only explicitly) exempts it.
 package webhook
@@ -11,9 +11,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -24,7 +24,7 @@ import (
 )
 
 // ArtifactFetcher retrieves the raw bytes of a model artifact referenced by
-// a pod annotation (a local path or URL). It is an interface so tests can
+// a pod annotation (a local path). It is an interface so tests can
 // supply fixture bytes without touching a filesystem or network.
 type ArtifactFetcher interface {
 	Fetch(ctx context.Context, ref string) ([]byte, error)
@@ -35,8 +35,35 @@ type ArtifactFetcher interface {
 // webhook pod (e.g. via a shared volume or init step) at the referenced path.
 type FileArtifactFetcher struct{}
 
-func (FileArtifactFetcher) Fetch(_ context.Context, ref string) ([]byte, error) {
-	return os.ReadFile(ref)
+const maxArtifactBytes = 64 * 1024 * 1024
+
+func (FileArtifactFetcher) Fetch(ctx context.Context, ref string) ([]byte, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	f, err := openArtifact(ref)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > maxArtifactBytes {
+		return nil, fmt.Errorf("artifact must be a regular file no larger than 64 MiB")
+	}
+	data, err := io.ReadAll(io.LimitReader(f, maxArtifactBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxArtifactBytes {
+		return nil, fmt.Errorf("artifact exceeds 64 MiB")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 // PolicyResolver looks up the enforcement policy for a pod's namespace.
@@ -59,6 +86,7 @@ type Handler struct {
 	Verifier ImageVerifier
 	Fetcher  ArtifactFetcher
 	Logger   *slog.Logger
+	slots    chan struct{}
 }
 
 // NewHandler builds a Handler with production defaults (real cosign
@@ -66,6 +94,7 @@ type Handler struct {
 func NewHandler(resolver PolicyResolver) *Handler {
 	return &Handler{
 		Resolver: resolver,
+		slots:    make(chan struct{}, 8),
 		Verifier: CosignVerifier{},
 		Fetcher:  FileArtifactFetcher{},
 	}
@@ -73,11 +102,24 @@ func NewHandler(resolver PolicyResolver) *Handler {
 
 // Handle implements admission.Handler. It resolves the pod namespace's
 // policy first (an exemption or a missing policy short-circuits everything
-// else), then runs the MVP checks in a fixed order -- host-level access
+// else), then runs the admission checks in a fixed order -- host-level access
 // denial first (cheapest, no I/O), then image signatures, then artifact
 // validation -- so the response's Reason names the first violation found.
 func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.Response {
 	started := time.Now()
+	if h.slots != nil {
+		select {
+		case h.slots <- struct{}{}:
+			defer func() { <-h.slots }()
+		default:
+			return h.finish(req, &corev1.Pod{}, started, "denied", "saturated", admission.Denied("admission capacity exhausted; retry later"))
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return h.finish(req, &corev1.Pod{}, started, "denied", "canceled", admission.Denied("admission canceled"))
+	}
+	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	defer cancel()
 	pod := &corev1.Pod{}
 	if err := json.Unmarshal(req.Object.Raw, pod); err != nil {
 		return h.finish(req, pod, started, "error", "decode_error", admission.Errored(http.StatusBadRequest, fmt.Errorf("decoding pod: %w", err)))
@@ -88,6 +130,9 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		namespace = pod.Namespace
 	}
 
+	if namespace == "" || (pod.Namespace != "" && pod.Namespace != namespace) {
+		return h.finish(req, pod, started, "denied", "namespace_mismatch", admission.Denied("missing or inconsistent admission namespace"))
+	}
 	resolution, err := h.Resolver.Resolve(ctx, namespace)
 	if err != nil {
 		if errors.Is(err, policy.ErrNoPolicy) {
@@ -102,15 +147,25 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		return h.finish(req, pod, started, "allowed", "exempt", admission.Allowed(fmt.Sprintf("namespace %q is exempt from ModelGate checks: %s", namespace, resolution.ExemptionReason)))
 	}
 	cfg := resolution.Config
+	if cfg == nil {
+		return h.finish(req, pod, started, "denied", "policy_error", admission.Denied("missing enforcement configuration"))
+	}
 
 	if reason, denied := checkHostAccess(&pod.Spec); denied {
 		return h.finish(req, pod, started, "denied", "host_access", admission.Denied(reason))
 	}
 
+	// Only share successful verification within this admission and policy snapshot.
+	// Every later request still reads its namespace policy and contacts the registry.
+	verified := make(map[string]struct{})
 	for _, c := range allPodContainers(&pod.Spec) {
+		if _, ok := verified[c.Image]; ok {
+			continue
+		}
 		if err := h.Verifier.VerifySignature(ctx, c.Image, cfg.CosignPublicKeyPEM); err != nil {
 			return h.finish(req, pod, started, "denied", "image_signature", admission.Denied(fmt.Sprintf("unsigned or invalid image %q: %v", c.Image, err)))
 		}
+		verified[c.Image] = struct{}{}
 	}
 
 	if ref, ok := pod.Annotations[ModelArtifactAnnotation]; ok {
@@ -119,6 +174,9 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		}
 	}
 
+	if err := ctx.Err(); err != nil {
+		return h.finish(req, pod, started, "denied", "canceled", admission.Denied("admission canceled"))
+	}
 	return h.finish(req, pod, started, "allowed", "checks_passed", admission.Allowed("all ModelGate checks passed"))
 }
 
@@ -149,6 +207,9 @@ func (h *Handler) logger() *slog.Logger {
 // volume access outright -- these are always denied and are not subject to
 // per-namespace policy configuration, only to the whole-namespace Exempt flag.
 func checkHostAccess(spec *corev1.PodSpec) (reason string, denied bool) {
+	if spec.HostIPC {
+		return "hostIPC is not permitted", true
+	}
 	if spec.HostPID {
 		return "hostPID is not permitted", true
 	}
@@ -170,7 +231,7 @@ func checkHostAccess(spec *corev1.PodSpec) (reason string, denied bool) {
 
 // allPodContainers returns every container spec that can carry an image:
 // regular containers, init containers, and ephemeral containers (the
-// `kubectl debug` bypass vector called out in the M3 adversarial suite).
+// `kubectl debug` bypass vector called out in the adversarial suite).
 func allPodContainers(spec *corev1.PodSpec) []corev1.Container {
 	all := make([]corev1.Container, 0, len(spec.Containers)+len(spec.InitContainers)+len(spec.EphemeralContainers))
 	all = append(all, spec.Containers...)
