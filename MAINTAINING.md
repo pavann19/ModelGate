@@ -25,4 +25,4 @@ Review dependencies and Actions updates in a focused PR. Keep actions pinned, pr
 
 ## Incident handling
 
-Preserve the failing source/configuration and sanitized symptoms before repair. For an uncertain write, investigate its durable identity/state instead of assuming rollback. Follow the project's recovery guide; never let an AI worker perform domain repairs autonomously. Verify the repair separately and retain the original failure as historical evidence.
+Preserve the failing source/configuration and sanitized symptoms before repair. For an uncertain write, investigate its durable identity/state instead of assuming rollback. Follow the project's recovery guide; never let an analysis worker perform domain repairs autonomously. Verify the repair separately and retain the original failure as historical evidence.

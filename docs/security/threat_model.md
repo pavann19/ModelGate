@@ -35,7 +35,7 @@ The webhook currently relies on server TLS and deployment network isolation; it 
 
 ## Supported verification semantics
 
-The implementation inspected at mission entry uses key-based, offline Cosign-compatible signature verification, with controlled registry fetching and explicit repository/digest checks. Transparency-log inclusion is disabled in this mode. The configured public key is the trust anchor. Only key algorithms and signature encodings explicitly accepted and tested by the final verifier may be advertised as supported.
+The implementation uses key-based, offline Cosign-compatible signature verification, with controlled registry fetching and explicit repository/digest checks. Transparency-log inclusion is disabled in this mode. The configured public key is the trust anchor. Only key algorithms and signature encodings explicitly accepted and tested by the final verifier may be advertised as supported.
 
 ADR-001 and bounded-v1 are implemented. Current unit, independent Cosign v3.1.4 interoperability, real TLS registry and native API-server integration passed. The runtime contains no Cosign subprocess. Only PKIX PEM ECDSA P-256/SHA-256/ASN.1 DER is supported; this is deliberately narrower than Cosign. Wrong-key, tampered-payload, malformed-signature, wrong-repository and wrong-digest negatives are retained. See the [demonstration](DEMONSTRATION.md) and selected samples for exact scope; no full Cosign compatibility follows.
 
@@ -68,9 +68,9 @@ For signing-key compromise, first preserve admission/audit identities and identi
 
 For webhook unavailability, preserve fail-closed settings, inspect certificate dates/CA-Service identity, readiness/endpoints, API/registry connectivity and saturation. Restore the reviewed image/configuration/certificate pair. Changing failurePolicy or exempting a namespace is a consequential security downgrade requiring explicit operator action and an audit record.
 
-For suspected registry SSRF or malformed-input abuse, preserve sanitized request identity, isolate only the approved destination path and reproduce against a loopback synthetic peer. Do not scan or alter other project resources. For hostile worker input, retain the bounded rejected job and demonstrate that no policy/trust write occurred.
+For suspected registry SSRF or malformed-input abuse, preserve sanitized request identity, isolate only the approved destination path and reproduce against an isolated synthetic peer. Do not scan or alter other project resources. For hostile worker input, retain the bounded rejected job and demonstrate that no policy/trust write occurred.
 
-Before claiming a hardened deployment, run the exact final image in a new isolated enforcing-CNI cluster: traffic allow/deny, TLS rotation, key rotation, API-server failure modes, namespace/key negatives, upgrade/rollback and worker-outage independence. Record Kubernetes/CNI/runtime/image/source/config identities. This mission must not touch shared Docker/Kubernetes state when safe isolation is uncertain. The previous 15-hour stop remains authoritative; no 24-hour restart is implied.
+Before claiming a hardened deployment, run the exact final image in a new isolated enforcing-CNI cluster: traffic allow/deny, TLS rotation, key rotation, API-server failure modes, namespace/key negatives, upgrade/rollback and worker-outage independence. Record Kubernetes/CNI/runtime/image/source/config identities. Do not touch shared Docker/Kubernetes state when safe isolation is uncertain. The previous 15-hour stop remains authoritative; no 24-hour restart is implied.
 
 ## Standards alignment and limits
 
