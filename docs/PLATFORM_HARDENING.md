@@ -23,7 +23,7 @@ It is not a CIS certification, penetration-test report or production-readiness c
 
 Admission requires outbound API, DNS, registry and approved token-service access. No LLM or
 telemetry RPC is required. The registry transport rejects proxy inheritance, redirects, unapproved
-destinations, metadata IPs, DNS rebinding and oversized responses. Explicit-key offline Cosign
+destinations, metadata IPs, DNS rebinding and oversized responses. Explicit-key bounded-v1
 verification does not establish transparency-log inclusion or image vulnerability status.
 
 ## Implemented controls
@@ -51,15 +51,13 @@ verification does not establish transparency-log inclusion or image vulnerabilit
 - Image contexts exclude runtime databases, evidence, key material and coordination documents.
   Go dependency advisories are checked by pinned govulncheck; chart security regressions run in CI.
 
-The bundled Cosign has been moved from v2.4.1 to the digest-pinned upstream v3.1.4 image;
-integration assertions still require the exact binary version. A binary scan of the upstream
-v3.1.4 executable still reports vulnerable symbols in its older Go standard library and ACR
-credential helper. Offline local operands and the subprocess environment allowlist restrict
-exposure, but do not make that scan pass. Binary/container release remains blocked on a
-patched build and full image scan; a clean ModelGate source scan does not clear bundled tools.
-The `Distribution binary security` workflow builds without publishing and scans both shipped Go
-executables. It deliberately fails on findings; it is not an OS-package scanner or a waiver for
-the known upstream binary findings.
+The runtime no longer bundles or executes the general-purpose Cosign CLI. Bounded-v1 uses
+Go cryptography with a deliberately narrow P-256 key/signature contract; Cosign v3.1.4 remains
+an independent test oracle. See ADR-001 and the security demonstration for migration limits.
+The `Distribution binary security` workflow builds without publishing and scans the shipped
+webhook executable. It deliberately fails on findings; it is not an OS-package scanner.
+The removed CLI's historical findings are not evidence of current application vulnerabilities,
+and a clean source/binary scan does not establish complete image or deployment security.
 
 ## Installation and compatibility
 

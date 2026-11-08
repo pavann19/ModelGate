@@ -14,7 +14,7 @@ Kubernetes API server (caller authentication + RBAC + admission)
      -> controlled Go HTTPS transport: resolve, approve IP, dial numeric IP; no proxy/redirect
      -> digest-verified manifest and cosign signature payload downloads
      -> exact repository/digest/type claims + bounded-v1 P-256 signature verification
-     -> 10-second total verifier deadline; bounded downloads and retained stderr
+     -> 10-second total verifier deadline; bounded downloads and generic errors
   -> optional model annotation: allow-list lookup -> regular local file <= 64 MiB
      -> recognized pickle rejection + JSON-object framing + SHA-256 comparison
   -> AdmissionResponse allow/deny + bounded-label metrics + structured decision log
@@ -27,7 +27,7 @@ verification of the exact image can be reused within one admission request. The 
 [analysis worker](../agent/README.md) owns a separate SQLite WAL queue and emits proposals;
 it cannot update admission policy or replace signature verification.
 Policy objects live in Kubernetes; status is unused. Every request reads policy afresh.
-No subprocess shell is used: image and key path are separate executable arguments.
+No verification subprocess or temporary key/payload files are used.
 
 Validation cannot change Pod images. Workloads must supply digest references themselves.
 Admission uses a snapshot; updating a key/policy does not revoke already-running Pods.
