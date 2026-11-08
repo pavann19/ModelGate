@@ -30,7 +30,7 @@ Install Kubernetes envtest **1.31.0** assets and set `KUBEBUILDER_ASSETS` to tha
 go test ./test/e2e/... -v -p=1 -count=1 -timeout=180s
 go test ./test/cosign -v -p=1 -count=1 -timeout=120s
 mkdir -p artifacts/native-admission
-MODELGATE_NATIVE_ADMISSION=1 MODELGATE_EVIDENCE_DIR=artifacts/native-admission \
+MODELGATE_NATIVE_ADMISSION=1 MODELGATE_EVIDENCE_DIR="$(pwd)/artifacts/native-admission" \
   go test ./test/cosign -run '^TestNativeAdmissionTrustAndOverhead$' -v -p=1 -count=1 -timeout=120s
 ```
 

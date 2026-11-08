@@ -88,7 +88,7 @@ jobs:
         env:
           KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
           MODELGATE_NATIVE_ADMISSION: '1'
-          MODELGATE_EVIDENCE_DIR: artifacts/native-admission
+          MODELGATE_EVIDENCE_DIR: ${{ github.workspace }}/artifacts/native-admission
         run: |
           set -o pipefail
           mkdir -p artifacts/native-admission
