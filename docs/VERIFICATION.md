@@ -21,7 +21,7 @@ The main-promotion PR run [41334209047](https://github.com/pavann19/ModelGate/ac
 
 1. Reproduce the relevant focused regression in an isolated environment before changing behavior.
 2. Preserve failing artifacts and record the new source revision, configuration, workload and outcome separately.
-3. Keep optional AI output advisory; it cannot change admission policy, replay financial writes or operate cluster membership autonomously.
+3. Keep optional analysis output advisory; it cannot change admission policy, replay financial writes or operate cluster membership autonomously.
 4. For runtime changes, rerun relevant tests and CI before making release claims.
 
 No fresh long-running, paid-cloud or production validation was performed for this documentation update. See the [documentation index](README.md) for setup, tests and recovery.
