@@ -8,7 +8,6 @@ package webhook
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	strictjson "sigs.k8s.io/json"
 
 	"github.com/pavann19/modelgate/internal/artifact"
 	"github.com/pavann19/modelgate/internal/policy"
@@ -121,8 +121,15 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 	ctx, cancel := context.WithTimeout(ctx, 12*time.Second)
 	defer cancel()
 	pod := &corev1.Pod{}
-	if err := json.Unmarshal(req.Object.Raw, pod); err != nil {
-		return h.finish(req, pod, started, "error", "decode_error", admission.Errored(http.StatusBadRequest, fmt.Errorf("decoding pod: %w", err)))
+	// Reject parser ambiguity before decoding a security-sensitive object.
+	if len(req.Object.Raw) > 2*1024*1024 || rejectAmbiguousJSON(req.Object.Raw) != nil {
+		return h.finish(req, pod, started, "error", "decode_error", admission.Errored(http.StatusBadRequest, errors.New("invalid, ambiguous or oversized pod JSON")))
+	}
+	if strictErrors, err := strictjson.UnmarshalStrict(req.Object.Raw, pod); err != nil || len(strictErrors) != 0 {
+		return h.finish(req, pod, started, "error", "decode_error", admission.Errored(http.StatusBadRequest, errors.New("invalid Pod JSON: use canonical supported field names and types")))
+	}
+	if len(pod.Spec.Containers) == 0 || (pod.Kind != "" && pod.Kind != "Pod") {
+		return h.finish(req, pod, started, "error", "decode_error", admission.Errored(http.StatusBadRequest, errors.New("a supported Pod with at least one container is required")))
 	}
 
 	namespace := req.Namespace
@@ -138,13 +145,13 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 		if errors.Is(err, policy.ErrNoPolicy) {
 			return h.finish(req, pod, started, "denied", "no_policy", admission.Denied(fmt.Sprintf("no ModelGatePolicy exists for namespace %q; failing closed", namespace)))
 		}
-		return h.finish(req, pod, started, "error", "policy_error", admission.Errored(http.StatusInternalServerError, fmt.Errorf("resolving policy for namespace %q: %w", namespace, err)))
+		return h.finish(req, pod, started, "error", "policy_error", admission.Errored(http.StatusInternalServerError, errors.New("namespace policy resolution failed; contact the policy operator")))
 	}
 
 	if resolution.Exempt {
 		h.logger().Warn("admitting pod without ModelGate checks: namespace is exempt",
-			"namespace", namespace, "pod", pod.Name, "reason", resolution.ExemptionReason)
-		return h.finish(req, pod, started, "allowed", "exempt", admission.Allowed(fmt.Sprintf("namespace %q is exempt from ModelGate checks: %s", namespace, resolution.ExemptionReason)))
+			"namespace", namespace, "pod", pod.Name)
+		return h.finish(req, pod, started, "allowed", "exempt", admission.Allowed("namespace is explicitly exempt from ModelGate checks"))
 	}
 	cfg := resolution.Config
 	if cfg == nil {
@@ -163,7 +170,7 @@ func (h *Handler) Handle(ctx context.Context, req admission.Request) admission.R
 			continue
 		}
 		if err := h.Verifier.VerifySignature(ctx, c.Image, cfg.CosignPublicKeyPEM); err != nil {
-			return h.finish(req, pod, started, "denied", "image_signature", admission.Denied(fmt.Sprintf("unsigned or invalid image %q: %v", c.Image, err)))
+			return h.finish(req, pod, started, "denied", "image_signature", admission.Denied("unsigned or invalid image; check registry destination, repository/digest and namespace key"))
 		}
 		verified[c.Image] = struct{}{}
 	}
@@ -252,7 +259,7 @@ func (h *Handler) checkModelArtifact(ctx context.Context, cfg *policy.Config, re
 	}
 	data, err := h.Fetcher.Fetch(ctx, ref)
 	if err != nil {
-		return fmt.Sprintf("could not fetch model artifact %q: %v", ref, err), true
+		return "could not fetch allowed model artifact; contact the artifact operator", true
 	}
 	if err := artifact.Validate(data, expectedHash); err != nil {
 		return fmt.Sprintf("model artifact %q failed validation: %v", ref, err), true

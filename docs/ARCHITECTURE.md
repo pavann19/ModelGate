@@ -13,7 +13,7 @@ Kubernetes API server (caller authentication + RBAC + admission)
   -> exact image identity + operator registry/endpoint policy
      -> controlled Go HTTPS transport: resolve, approve IP, dial numeric IP; no proxy/redirect
      -> digest-verified manifest and cosign signature payload downloads
-     -> exact repository/digest claims + offline cosign verify-blob on local files
+     -> exact repository/digest/type claims + bounded-v1 P-256 signature verification
      -> 10-second total verifier deadline; bounded downloads and retained stderr
   -> optional model annotation: allow-list lookup -> regular local file <= 64 MiB
      -> recognized pickle rejection + JSON-object framing + SHA-256 comparison
@@ -33,6 +33,6 @@ Validation cannot change Pod images. Workloads must supply digest references the
 Admission uses a snapshot; updating a key/policy does not revoke already-running Pods.
 Artifact files are inspected in the webhook, not in the workload container.
 
-Trust boundaries are the API server, operator-owned policy and serving TLS keys, cosign binary,
+Trust boundaries are the API server, operator-owned policy and serving TLS keys, bounded verification implementation,
 registry network path, operator destination policy and webhook filesystem. No code establishes provenance/SBOM trust.
 The direct reader avoids informer staleness but does not make policy updates atomic with Pod admission.

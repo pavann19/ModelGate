@@ -2,7 +2,10 @@ replicaCount: 2
 
 image:
   repository: ghcr.io/pavann19/modelgate
-  tag: latest
+  tag: ""
+  digest: ""
+  # Explicit development escape hatch; never use for a release.
+  allowMutableTags: false
   pullPolicy: IfNotPresent
 
 failurePolicy: Fail
@@ -20,3 +23,12 @@ metrics:
 
 # Operator-owned JSON; never generated from workload input.
 registryPolicySecret: modelgate-registry-policy
+
+# Requires a CNI that enforces NetworkPolicy. CIDRs are operator-owned,
+# and must reflect control-plane/NAT behavior as observed in the target cluster.
+networkPolicy:
+  enabled: true
+  apiServerCIDRs: []
+  apiServerPorts: [443, 6443]
+  registryEndpoints: [] # [{cidr: 203.0.113.10/32, port: 443}]
+  metricsNamespaceSelector: {} # empty means no remote metrics access

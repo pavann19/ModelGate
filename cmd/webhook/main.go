@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -67,6 +68,7 @@ func main() {
 		WebhookServer: webhook.NewServer(webhook.Options{
 			Port:    *webhookPort,
 			CertDir: *certDir,
+			TLSOpts: []func(*tls.Config){hardenTLS},
 		}),
 	})
 	if err != nil {
@@ -80,7 +82,7 @@ func main() {
 	handler := mgwebhook.NewHandler(resolver)
 	handler.Verifier = mgwebhook.CosignVerifier{RegistryPolicy: registryPolicy}
 
-	mgr.GetWebhookServer().Register("/validate-pods", &webhook.Admission{Handler: handler})
+	mgr.GetWebhookServer().Register("/validate-pods", mgwebhook.BoundedAdmissionHTTP(&webhook.Admission{Handler: handler}))
 	if err := mgr.AddHealthzCheck("process", healthz.Ping); err != nil {
 		exitf("registering liveness: %v", err)
 	}
@@ -91,6 +93,12 @@ func main() {
 	if err := mgr.Start(ctx); err != nil {
 		exitf("running manager: %v", err)
 	}
+}
+
+func hardenTLS(config *tls.Config) {
+	config.MinVersion = tls.VersionTLS12
+	// Avoid multiplexed untrusted request streams on the admission listener.
+	config.NextProtos = []string{"http/1.1"}
 }
 
 // Readiness includes a real TLS handshake, and turns false as soon as shutdown

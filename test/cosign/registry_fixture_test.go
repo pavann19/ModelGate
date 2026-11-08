@@ -122,6 +122,14 @@ func newTLSRegistry(t *testing.T) tlsRegistryFixture {
 		routes["/v2/"+repo+"/blobs/"+pd] = payload
 	}
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// This native fixture binds a single OS-assigned private-interface port
+		// because production intentionally forbids loopback registry destinations.
+		// Reject peers from every other address; all keys/credentials are synthetic.
+		peer, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil || peer != ip {
+			http.Error(w, "fixture peer denied", http.StatusForbidden)
+			return
+		}
 		if strings.Contains(r.URL.Path, "/slow-registry/") {
 			select {
 			case <-r.Context().Done():

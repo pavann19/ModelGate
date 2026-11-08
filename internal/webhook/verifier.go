@@ -1,36 +1,38 @@
 package webhook
 
 import (
-	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/pem"
 	"errors"
-	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
+	"strings"
 	"time"
 )
 
-// ImageVerifier checks that a container image reference is signed by the
-// given trusted public key. The key is passed per-call (rather than fixed
-// at construction) because the key comes from the resolved
-// ModelGatePolicy for the pod's namespace and can differ per request.
+// ImageVerifier verifies an image using the operator-owned namespace key.
 type ImageVerifier interface {
 	VerifySignature(ctx context.Context, image, publicKeyPEM string) error
 }
 
-// CosignVerifier fetches digest-bound OCI signature payloads through the
-// controlled registry transport, then invokes offline cosign cryptography.
+// CosignVerifier verifies legacy Cosign payloads under the bounded-v1 contract:
+// explicit PKIX ECDSA P-256 key, SHA-256, ASN.1 signature. Other key algorithms,
+// keyless identities, transparency proofs and attestations are unsupported.
+// The historical name is retained for source compatibility, not general Cosign compatibility.
 type CosignVerifier struct{ RegistryPolicy *RegistryPolicy }
 
-// VerifySignature writes publicKeyPEM to a temp file and runs
-// offline `cosign verify-blob` on local payload/signature/key files. Registry
-// and payload identity validation precede every cryptographic verification.
-//
-// Transparency-log verification is disabled. The configured public key is
-// the trust anchor; log inclusion and audit assurance are outside this mode.
 func (v CosignVerifier) VerifySignature(ctx context.Context, image, publicKeyPEM string) error {
 	id, err := parseImage(image)
+	if err != nil {
+		return err
+	}
+	if ctx.Err() != nil {
+		return errors.New("signature verification canceled or timed out")
+	}
+	key, err := parseVerificationKey(publicKeyPEM)
 	if err != nil {
 		return err
 	}
@@ -44,31 +46,8 @@ func (v CosignVerifier) VerifySignature(ctx context.Context, image, publicKeyPEM
 	if err != nil {
 		return err
 	}
-	keyPath, cleanup, err := writeTempKey(publicKeyPEM)
-	if err != nil {
-		return errors.New("cannot prepare verification key")
-	}
-	defer cleanup()
-	dir, err := os.MkdirTemp("", "modelgate-signature-*")
-	if err != nil {
-		return errors.New("cannot prepare signature files")
-	}
-	defer os.RemoveAll(dir)
 	for _, p := range payloads {
-		sigPath := filepath.Join(dir, "signature")
-		blobPath := filepath.Join(dir, "payload")
-		if os.WriteFile(sigPath, []byte(p.Signature), 0600) != nil || os.WriteFile(blobPath, p.Data, 0600) != nil {
-			return errors.New("cannot prepare signature files")
-		}
-		cmd := exec.CommandContext(ctx, "cosign", "verify-blob", "--key", keyPath, "--signature", sigPath, "--offline", "--insecure-ignore-tlog=true", blobPath)
-		// All operands are local files and explicit-key offline verification needs
-		// no registry/keyless/TUF downloads. Do not inherit destination overrides,
-		// credential helpers, proxy settings or a Docker credential configuration.
-		cmd.Env = offlineEnvironment()
-		var stderr boundedOutput
-		cmd.Stderr = &stderr
-		cmd.WaitDelay = time.Second
-		if cmd.Run() == nil {
+		if err := verifyDetachedSignature(ctx, key, p.Data, p.Signature); err == nil {
 			return nil
 		}
 		if ctx.Err() != nil {
@@ -77,47 +56,55 @@ func (v CosignVerifier) VerifySignature(ctx context.Context, image, publicKeyPEM
 	}
 	return errors.New("signature verification failed")
 }
-func offlineEnvironment() []string {
-	var env []string
-	for _, name := range []string{"PATH", "SystemRoot", "WINDIR", "TEMP", "TMP", "TMPDIR"} {
-		if value, ok := os.LookupEnv(name); ok {
-			env = append(env, name+"="+value)
-		}
-	}
-	// These proxies are defensive: offline operands prevent network use; any
-	// unexpected future HTTP path must fail against an unusable proxy.
-	env = append(env, "HTTP_PROXY=http://127.0.0.1:1", "HTTPS_PROXY=http://127.0.0.1:1", "ALL_PROXY=http://127.0.0.1:1", "NO_PROXY=", "COSIGN_EXPERIMENTAL=0")
-	return env
-}
 
-func writeTempKey(pemKey string) (path string, cleanup func(), err error) {
-	f, err := os.CreateTemp("", "modelgate-cosign-*.pub")
+func parseVerificationKey(keyPEM string) (*ecdsa.PublicKey, error) {
+	fail := errors.New("verification key must be a single PKIX ECDSA P-256 PUBLIC KEY")
+	if len(keyPEM) == 0 || len(keyPEM) > 16*1024 {
+		return nil, fail
+	}
+	// pem.Decode otherwise skips arbitrary leading text. Do not accept it.
+	trimmed := strings.TrimSpace(keyPEM)
+	if strings.Count(trimmed, "-----BEGIN ") != 1 || !strings.HasPrefix(trimmed, "-----BEGIN PUBLIC KEY-----") {
+		return nil, fail
+	}
+	block, rest := pem.Decode([]byte(trimmed))
+	if block == nil || block.Type != "PUBLIC KEY" || len(block.Headers) != 0 || len(strings.TrimSpace(string(rest))) != 0 {
+		return nil, fail
+	}
+	parsed, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
-		return "", nil, fmt.Errorf("creating temp file: %w", err)
+		return nil, fail
 	}
-	if _, err := f.WriteString(pemKey); err != nil {
-		f.Close()
-		os.Remove(f.Name())
-		return "", nil, fmt.Errorf("writing key: %w", err)
+	key, ok := parsed.(*ecdsa.PublicKey)
+	if !ok || key.Curve != elliptic.P256() || !key.Curve.IsOnCurve(key.X, key.Y) {
+		return nil, fail
 	}
-	if err := f.Close(); err != nil {
-		os.Remove(f.Name())
-		return "", nil, err
-	}
-	return f.Name(), func() { os.Remove(f.Name()) }, nil
+	return key, nil
 }
 
-// boundedOutput drains subprocess stderr without retaining unbounded registry output.
-type boundedOutput struct{ bytes.Buffer }
-
-func (b *boundedOutput) Write(p []byte) (int, error) {
-	n := len(p)
-	const limit = 4096
-	if remaining := limit - b.Len(); remaining > 0 {
-		if len(p) > remaining {
-			p = p[:remaining]
-		}
-		_, _ = b.Buffer.Write(p)
+func verifyDetachedSignature(ctx context.Context, key *ecdsa.PublicKey, payload []byte, encoded string) error {
+	fail := errors.New("signature verification failed")
+	if ctx.Err() != nil {
+		return errors.New("signature verification canceled or timed out")
 	}
-	return n, nil
+	if key == nil || key.Curve != elliptic.P256() || len(payload) == 0 || len(payload) > 64*1024 || len(encoded) == 0 || len(encoded) > 16*1024 {
+		return fail
+	}
+	// Strict requires canonical padding bits; reject CR/LF ignored by DecodeString.
+	if strings.ContainsAny(encoded, "\r\n") {
+		return fail
+	}
+	signature, err := base64.StdEncoding.Strict().DecodeString(encoded)
+	if err != nil || len(signature) > 72 || len(signature) == 0 {
+		return fail
+	}
+	hash := sha256.Sum256(payload)
+	valid := ecdsa.VerifyASN1(key, hash[:], signature)
+	if ctx.Err() != nil {
+		return errors.New("signature verification canceled or timed out")
+	}
+	if !valid {
+		return fail
+	}
+	return nil
 }

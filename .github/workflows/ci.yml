@@ -6,7 +6,7 @@ env:
 
 on:
   push:
-    branches: [main, 'publication/20261031']
+    branches: [main]
   pull_request:
 
 permissions:
@@ -84,6 +84,15 @@ jobs:
         run: |
           set -o pipefail
           go test ./bench/ -run TestAdmissionLatency -v -timeout 120s 2>&1 | tee envtest-benchmark-output.txt
+      - name: Native API admission with real registry trust and measured overhead
+        env:
+          KUBEBUILDER_ASSETS: ${{ steps.envtest-assets.outputs.path }}
+          MODELGATE_NATIVE_ADMISSION: '1'
+          MODELGATE_EVIDENCE_DIR: artifacts/native-admission
+        run: |
+          set -o pipefail
+          mkdir -p artifacts/native-admission
+          go test ./test/cosign -run '^TestNativeAdmissionTrustAndOverhead$' -v -count=1 -timeout 120s 2>&1 | tee native-admission-output.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -97,6 +106,8 @@ jobs:
           path: |
             envtest-output.txt
             envtest-benchmark-output.txt
+            native-admission-output.txt
+            artifacts/native-admission/admission-performance.json
           if-no-files-found: ignore
 
   fuzz-pickle:
@@ -111,11 +122,20 @@ jobs:
         run: |
           set -o pipefail
           go test ./internal/pickle/ -fuzz=FuzzIsPickle_RealFormatsNotFlagged -fuzztime=30s 2>&1 | tee fuzz-pickle-output.txt
+      - name: Fuzz registry and verification trust parsers
+        shell: bash
+        run: |
+          set -o pipefail
+          for target in FuzzRegistryJSONKeys FuzzBearerChallenge FuzzBoundedVerificationKey; do
+            go test ./internal/webhook -run '^$' -fuzz "^${target}$" -fuzztime=10s -parallel=2 2>&1 | tee "${target}-output.txt"
+          done
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: fuzz-pickle-output
-          path: fuzz-pickle-output.txt
+          path: |
+            fuzz-pickle-output.txt
+            Fuzz*-output.txt
 
   cosign-integration:
     runs-on: ubuntu-latest
@@ -127,11 +147,15 @@ jobs:
           go-version: '1.27.3'
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
         with:
-          cosign-release: v2.4.1
+          cosign-release: v3.1.4
       - name: Verify CosignVerifier against a real signed and a real unsigned image
         run: |
           set -o pipefail
           go test ./test/cosign/... -v -timeout 120s 2>&1 | tee cosign-integration-output.txt
+      - name: Independent pinned Cosign cryptographic interoperability
+        env:
+          MODELGATE_REQUIRE_COSIGN_ORACLE: '1'
+        run: go test ./internal/webhook -run '^TestDetachedSignatureCosignInteroperability$' -v -count=1 -timeout 60s
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -152,25 +176,28 @@ jobs:
           set -o pipefail
           mkdir -p artifacts
           helm lint deploy/helm \
-            --set-string tls.caBundle=dGVzdC1jYS1idW5kbGU= \
+            -f deploy/helm/hardening-test-values.yaml \
             2>&1 | tee artifacts/helm-lint-output.txt
           helm template modelgate deploy/helm \
             --namespace modelgate-system \
-            --set-string tls.caBundle=dGVzdC1jYS1idW5kbGU= \
-            --set image.repository=ghcr.io/pavann19/modelgate \
-            --set image.tag=ci-render \
+            -f deploy/helm/hardening-test-values.yaml \
             2>&1 | tee artifacts/helm-template-output.yaml >/dev/null
       - name: Assert Helm refuses a missing CA bundle
         shell: bash
         run: |
           set -o pipefail
-          if helm template modelgate deploy/helm > artifacts/helm-missing-ca-output.txt 2>&1; then
+          if helm template modelgate deploy/helm -f deploy/helm/hardening-test-values.yaml \
+            --set-string tls.caBundle= > artifacts/helm-missing-ca-output.txt 2>&1; then
             cat artifacts/helm-missing-ca-output.txt
             echo "expected helm template to fail when tls.caBundle is omitted"
             exit 1
           fi
           cat artifacts/helm-missing-ca-output.txt
           grep -q 'tls.caBundle is required' artifacts/helm-missing-ca-output.txt
+      - name: Assert rendered isolation and reject unsafe overrides
+        run: |
+          python3 -m pip install PyYAML==6.0.3
+          python3 -B hack/test_helm_hardening.py -v
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -194,7 +221,7 @@ jobs:
           cluster_name: modelgate
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
         with:
-          cosign-release: v2.4.1
+          cosign-release: v3.1.4
       - name: Deploy to kind and assert admission behaviour
         shell: bash
         run: |

@@ -1,7 +1,7 @@
 name: Analysis worker
 on:
   push:
-    branches: [main, 'publication/20261031']
+    branches: [main]
   pull_request:
 permissions:
   contents: read

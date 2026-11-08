@@ -12,3 +12,20 @@ kind-smoke-output*.txt
 artifacts/private-kind/
 artifacts/platform-eval/
 platform-eval-output.txt
+
+# Runtime/evaluation evidence and coordination are not image inputs.
+docs
+artifacts
+bench/results
+**/__pycache__
+**/*.sqlite
+**/*.sqlite-*
+**/*.db
+**/*.db-*
+**/*.pem
+**/*.key
+**/*.pfx
+**/*.kubeconfig
+**/kubeconfig*
+.env*
+**/.env*

@@ -1,0 +1,8 @@
+# Synthetic documentation-only addresses; never install this fixture.
+tls:
+  caBundle: dGVzdC1jYS1idW5kbGU=
+image:
+  digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+networkPolicy:
+  apiServerCIDRs: [192.0.2.10/32]
+  registryEndpoints: [{cidr: 203.0.113.10/32, port: 443}]
