@@ -22,7 +22,12 @@ build_image('modelgate-registry-fixture:local','deploy/kind/registry-fixture.Doc
 command(['kind','load','docker-image','modelgate-registry-fixture:local','--name',cluster])
 command(ctx+['apply','-f','-'],json.dumps({'apiVersion':'v1','kind':'Namespace','metadata':{'name':'modelgate-system'}}))
 command(ctx+['-n','modelgate-system','delete','pod','tls-registry-fixture','--ignore-not-found'])
-command(ctx+['apply','-f','-'],json.dumps({'apiVersion':'v1','kind':'Pod','metadata':{'name':'tls-registry-fixture','namespace':'modelgate-system'},'spec':{'restartPolicy':'Never','securityContext':{'fsGroup':65532},'volumes':[{'name':'tmp','emptyDir':{'medium':'Memory','sizeLimit':'32Mi'}}],'containers':[{'name':'registry','image':'modelgate-registry-fixture:local','imagePullPolicy':'Never','volumeMounts':[{'name':'tmp','mountPath':'/tmp'}],'resources':{'requests':{'cpu':'50m','memory':'64Mi'},'limits':{'cpu':'500m','memory':'256Mi'}},'securityContext':{'runAsNonRoot':True,'runAsUser':65532,'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'seccompProfile':{'type':'RuntimeDefault'}}}]}}))
+nodes=json.loads(command(ctx+['get','nodes','-o','json']))['items']
+peer_cidrs=[node['spec']['podCIDR'] for node in nodes]
+if not peer_cidrs:
+ raise RuntimeError('Disposable cluster Pod CIDRs are required for the fixture')
+
+command(ctx+['apply','-f','-'],json.dumps({'apiVersion':'v1','kind':'Pod','metadata':{'name':'tls-registry-fixture','namespace':'modelgate-system'},'spec':{'restartPolicy':'Never','securityContext':{'fsGroup':65532},'volumes':[{'name':'tmp','emptyDir':{'medium':'Memory','sizeLimit':'32Mi'}}],'containers':[{'name':'registry','image':'modelgate-registry-fixture:local','imagePullPolicy':'Never','env':[{'name':'MODELGATE_FIXTURE_CLIENT_CIDRS','value':','.join(peer_cidrs)}],'volumeMounts':[{'name':'tmp','mountPath':'/tmp'}],'resources':{'requests':{'cpu':'50m','memory':'64Mi'},'limits':{'cpu':'500m','memory':'256Mi'}},'securityContext':{'runAsNonRoot':True,'runAsUser':65532,'readOnlyRootFilesystem':True,'allowPrivilegeEscalation':False,'capabilities':{'drop':['ALL']},'seccompProfile':{'type':'RuntimeDefault'}}}]}}))
 command(ctx+['-n','modelgate-system','wait','--for=condition=Ready','pod/tls-registry-fixture','--timeout=90s'])
 bootstrap=command(ctx+['-n','modelgate-system','logs','tls-registry-fixture'])
 (E/'fixture-bootstrap.txt').write_text(bootstrap)

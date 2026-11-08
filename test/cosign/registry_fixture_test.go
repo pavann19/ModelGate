@@ -50,7 +50,7 @@ func fixtureDigest(b []byte) string {
 	sum := sha256.Sum256(b)
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
-func newTLSRegistry(t *testing.T) tlsRegistryFixture {
+func newTLSRegistry(t *testing.T, allowedPeers ...*net.IPNet) tlsRegistryFixture {
 	t.Helper()
 	ip := localPrivateIP(t)
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -124,9 +124,9 @@ func newTLSRegistry(t *testing.T) tlsRegistryFixture {
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// This native fixture binds a single OS-assigned private-interface port
 		// because production intentionally forbids loopback registry destinations.
-		// Reject peers from every other address; all keys/credentials are synthetic.
-		peer, _, err := net.SplitHostPort(r.RemoteAddr)
-		if err != nil || peer != ip {
+		// Native callers use only the fixture IP. Explicit live mode additionally
+		// permits the disposable cluster's reviewed Pod CIDRs, never arbitrary peers.
+		if !fixturePeerAllowed(ip, r.RemoteAddr, allowedPeers) {
 			http.Error(w, "fixture peer denied", http.StatusForbidden)
 			return
 		}
@@ -202,7 +202,11 @@ func TestLiveRegistryServer(t *testing.T) {
 	if os.Getenv("MODELGATE_LIVE_REGISTRY_SERVER") != "1" {
 		t.Skip("fixture-server mode is launched separately by live integration")
 	}
-	f := newTLSRegistry(t)
+	peers, err := parseFixturePeerCIDRs(os.Getenv("MODELGATE_FIXTURE_CLIENT_CIDRS"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	f := newTLSRegistry(t, peers...)
 	b, err := json.Marshal(map[string]any{"registryPolicy": f.policy, "publicKey": f.publicKey, "otherPublicKey": f.otherPublicKey, "digest": f.digest, "host": f.host})
 	if err != nil {
 		t.Fatal(err)
@@ -222,4 +226,75 @@ func liveFixtureDuration(t *testing.T) time.Duration {
 		t.Fatal("fixture duration must be 15m..26h")
 	}
 	return d
+}
+
+// Cluster-only synthetic fixture input; production transport never reads this setting.
+func parseFixturePeerCIDRs(value string) ([]*net.IPNet, error) {
+	if value == "" {
+		return nil, fmt.Errorf("explicit disposable Pod CIDRs required")
+	}
+	parts := strings.Split(value, ",")
+	if len(parts) > 16 {
+		return nil, fmt.Errorf("too many fixture peer CIDRs")
+	}
+	var peers []*net.IPNet
+	for _, part := range parts {
+		ip, subnet, err := net.ParseCIDR(part)
+		if err != nil {
+			return nil, fmt.Errorf("invalid fixture peer CIDR")
+		}
+		ones, bits := subnet.Mask.Size()
+		if ip.To4() == nil || !ip.IsPrivate() || !ip.Equal(subnet.IP) || bits != 32 || ones < 16 {
+			return nil, fmt.Errorf("fixture peers require canonical private IPv4 /16 or narrower")
+		}
+		peers = append(peers, subnet)
+	}
+	return peers, nil
+}
+
+func fixturePeerAllowed(self, remote string, allowed []*net.IPNet) bool {
+	host, _, err := net.SplitHostPort(remote)
+	if err != nil {
+		return false
+	}
+	peer := net.ParseIP(host)
+	if peer == nil {
+		return false
+	}
+	if peer.Equal(net.ParseIP(self)) {
+		return true
+	}
+	for _, subnet := range allowed {
+		if subnet.Contains(peer) {
+			return true
+		}
+	}
+	return false
+}
+
+func TestFixturePeerBoundary(t *testing.T) {
+	for _, value := range []string{"", "0.0.0.0/0", "10.0.0.0/8", "127.0.0.0/24", "169.254.0.0/24", "8.8.8.0/24", "10.244.0.1/24", "::/0", "invalid"} {
+		if _, err := parseFixturePeerCIDRs(value); err == nil {
+			t.Errorf("unsafe peer range accepted: %s", value)
+		}
+	}
+	peers, err := parseFixturePeerCIDRs("10.244.0.0/24")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		remote       string
+		live, native bool
+	}{
+		{"10.244.0.2:1234", true, true}, {"10.244.0.3:1234", true, false},
+		{"10.244.1.3:1234", false, false}, {"192.168.1.3:1234", false, false},
+		{"8.8.8.8:1234", false, false}, {"invalid", false, false},
+	} {
+		if got := fixturePeerAllowed("10.244.0.2", tc.remote, peers); got != tc.live {
+			t.Errorf("live peer %s: %v", tc.remote, got)
+		}
+		if got := fixturePeerAllowed("10.244.0.2", tc.remote, nil); got != tc.native {
+			t.Errorf("native peer %s: %v", tc.remote, got)
+		}
+	}
 }

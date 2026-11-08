@@ -15,6 +15,9 @@ Pod dry-runs. Real ECDSA payloads are verified by the production Go verifier. Th
 negative cases cover anonymous/authenticated signatures, identity mismatch, tampering, redirects,
 forbidden hosts, timeouts, partial/oversized responses, host access and concurrent admission saturation.
 JSON results are written to artifacts/private-kind; any failed assertion makes the script fail.
+The live synthetic registry permits only its own address and explicitly supplied disposable-node
+Pod CIDRs (canonical private IPv4 /16 or narrower). The smoke runner derives these from the
+created cluster; ordinary native registry tests retain the single-host peer restriction.
 The registry fixtures are minimal OCI manifests. These tests establish admission behavior, not image
 pulling, scheduling, container execution, managed-cluster operation or public registry compatibility.
 The fixture server exits after 15 minutes. Delete the disposable cluster after inspection.
