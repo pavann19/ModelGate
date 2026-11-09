@@ -114,21 +114,21 @@ github.com/x448/float16@v0.8.4
 golang.org/x/exp@v0.0.0-20230515195305-f3d0a9c9a5cc
   License: BSD-3-Clause
   Source: https://proxy.golang.org/golang.org/x/exp/@v/v0.0.0-20230515195305-f3d0a9c9a5cc.zip
-golang.org/x/net@v0.60.0
+golang.org/x/net@v0.62.0
   License: BSD-3-Clause
-  Source: https://proxy.golang.org/golang.org/x/net/@v/v0.60.0.zip
-golang.org/x/oauth2@v0.21.0
+  Source: https://proxy.golang.org/golang.org/x/net/@v/v0.62.0.zip
+golang.org/x/oauth2@v0.27.0
   License: BSD-3-Clause
-  Source: https://proxy.golang.org/golang.org/x/oauth2/@v/v0.21.0.zip
-golang.org/x/sys@v0.48.0
+  Source: https://proxy.golang.org/golang.org/x/oauth2/@v/v0.27.0.zip
+golang.org/x/sys@v0.49.0
   License: BSD-3-Clause
-  Source: https://proxy.golang.org/golang.org/x/sys/@v/v0.48.0.zip
-golang.org/x/term@v0.46.0
+  Source: https://proxy.golang.org/golang.org/x/sys/@v/v0.49.0.zip
+golang.org/x/term@v0.47.0
   License: BSD-3-Clause
-  Source: https://proxy.golang.org/golang.org/x/term/@v/v0.46.0.zip
-golang.org/x/text@v0.42.0
+  Source: https://proxy.golang.org/golang.org/x/term/@v/v0.47.0.zip
+golang.org/x/text@v0.43.0
   License: BSD-3-Clause
-  Source: https://proxy.golang.org/golang.org/x/text/@v/v0.42.0.zip
+  Source: https://proxy.golang.org/golang.org/x/text/@v/v0.43.0.zip
 golang.org/x/time@v0.3.0
   License: BSD-3-Clause
   Source: https://proxy.golang.org/golang.org/x/time/@v/v0.3.0.zip
@@ -380,7 +380,6 @@ OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ==============================================================================
 Components/files:
   golang.org/x/exp@v0.0.0-20230515195305-f3d0a9c9a5cc/LICENSE
-  golang.org/x/oauth2@v0.21.0/LICENSE
   golang.org/x/time@v0.3.0/LICENSE
   k8s.io/apimachinery@v0.31.2/third_party/forked/golang/LICENSE
 Text SHA-256: 2d36597f7117c38b006835ae7f537487207d8ec407aa9d9980794b2030cbc067
@@ -1418,10 +1417,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ==============================================================================
 Components/files:
   Go toolchain 1.27.3/LICENSE
-  golang.org/x/net@v0.60.0/LICENSE
-  golang.org/x/sys@v0.48.0/LICENSE
-  golang.org/x/term@v0.46.0/LICENSE
-  golang.org/x/text@v0.42.0/LICENSE
+  golang.org/x/net@v0.62.0/LICENSE
+  golang.org/x/sys@v0.49.0/LICENSE
+  golang.org/x/term@v0.47.0/LICENSE
+  golang.org/x/text@v0.43.0/LICENSE
 Text SHA-256: 911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad
 ------------------------------------------------------------------------------
 Copyright 2009 The Go Authors.
@@ -1456,10 +1455,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 Components/files:
   Go toolchain 1.27.3/PATENTS
   golang.org/x/exp@v0.0.0-20230515195305-f3d0a9c9a5cc/PATENTS
-  golang.org/x/net@v0.60.0/PATENTS
-  golang.org/x/sys@v0.48.0/PATENTS
-  golang.org/x/term@v0.46.0/PATENTS
-  golang.org/x/text@v0.42.0/PATENTS
+  golang.org/x/net@v0.62.0/PATENTS
+  golang.org/x/sys@v0.49.0/PATENTS
+  golang.org/x/term@v0.47.0/PATENTS
+  golang.org/x/text@v0.43.0/PATENTS
   golang.org/x/time@v0.3.0/PATENTS
   google.golang.org/protobuf@v1.34.2/PATENTS
   k8s.io/apimachinery@v0.31.2/third_party/forked/golang/PATENTS
@@ -3003,3 +3002,36 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+==============================================================================
+Components/files:
+  golang.org/x/oauth2@v0.27.0/LICENSE
+Text SHA-256: 911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad
+------------------------------------------------------------------------------
+Copyright 2009 The Go Authors.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are
+met:
+
+   * Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+   * Redistributions in binary form must reproduce the above
+copyright notice, this list of conditions and the following disclaimer
+in the documentation and/or other materials provided with the
+distribution.
+   * Neither the name of Google LLC nor the names of its
+contributors may be used to endorse or promote products derived from
+this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

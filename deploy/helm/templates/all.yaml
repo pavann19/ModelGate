@@ -1,3 +1,18 @@
+{{- $ca := required "tls.caBundle is required" .Values.tls.caBundle -}}
+{{- if ne .Values.failurePolicy "Fail" }}
+{{- fail "failurePolicy must be Fail" }}
+{{- end }}
+{{- $image := "" -}}
+{{- if .Values.image.digest -}}
+{{- if not (regexMatch "^sha256:[a-f0-9]{64}$" .Values.image.digest) }}
+{{- fail "image.digest must be a sha256 digest" }}
+{{- end }}
+{{- $image = printf "%s@%s" .Values.image.repository .Values.image.digest -}}
+{{- else if and .Values.image.allowMutableTags .Values.image.tag -}}
+{{- $image = printf "%s:%s" .Values.image.repository .Values.image.tag -}}
+{{- else -}}
+{{- fail "image.digest is required (mutable tags require explicit development opt-in)" -}}
+{{- end }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -42,6 +57,7 @@ spec:
       labels: {app.kubernetes.io/name: modelgate, app.kubernetes.io/instance: {{ .Release.Name }}}
     spec:
       terminationGracePeriodSeconds: 40
+      enableServiceLinks: false
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -65,11 +81,15 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           resources:
-            requests: {cpu: 100m, memory: 128Mi}
-            limits: {cpu: "1", memory: 512Mi}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 128Mi}
+            limits: {cpu: "1", memory: 512Mi, ephemeral-storage: 256Mi}
+          image: {{ $image | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          args: ["--registry-policy-file=/etc/modelgate/registry-policy.json", "--webhook-port=9443", "--cert-dir=/tmp/k8s-webhook-server/serving-certs", "--metrics-bind-address=:8080"]
+          args:
+            - "--registry-policy-file=/etc/modelgate/registry-policy.json"
+            - "--webhook-port=9443"
+            - "--cert-dir=/tmp/k8s-webhook-server/serving-certs"
+            - {{ printf "--metrics-bind-address=%s" (ternary ":8080" "0" .Values.metrics.enabled) | quote }}
           ports:
             - {name: webhook, containerPort: 9443}
             - {name: metrics, containerPort: 8080}
@@ -130,7 +150,7 @@ webhooks:
         name: {{ .Release.Name }}-webhook
         namespace: {{ .Release.Namespace }}
         path: /validate-pods
-      caBundle: {{ required "tls.caBundle is required" .Values.tls.caBundle | quote }}
+      caBundle: {{ $ca | quote }}
 {{- if and .Values.metrics.enabled .Values.metrics.serviceMonitor.enabled }}
 ---
 apiVersion: monitoring.coreos.com/v1

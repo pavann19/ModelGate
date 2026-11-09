@@ -85,9 +85,9 @@ def main():
         policy['spec']['cosignPublicKeyPEM'] = key
         command(kube + ['apply', '-f', '-'], policy)
 
-    def phase(name, repo='signed', count=None, concurrency=1, expected='allowed', warmup=5, check=True):
+    def phase(name, repo='signed', count=None, concurrency=1, expected='allowed', warmup=5, check=True, target_namespace=None):
         path = args.output / (name + '.json')
-        result = subprocess.run([str(binary), '--context', args.context, '--namespace', namespace,
+        result = subprocess.run([str(binary), '--context', args.context, '--namespace', target_namespace or namespace,
                                  '--image', bootstrap['host'] + '/' + repo + '@' + bootstrap['digest'],
                                  '--requests', str(count or args.requests), '--concurrency', str(concurrency),
                                  '--expect', expected, '--warmup', str(warmup), '--output', str(path)],
@@ -113,6 +113,12 @@ def main():
               concurrency=saturation_concurrency, expected='saturation', warmup=0)
         apply_policy(bootstrap['otherPublicKey'])
         phase('rotated-key-denies-old-signature', count=20, expected='policy_denied', warmup=0)
+        # The fixture's wrong-signature repository is signed by the second key.
+        # Rotation must accept its new signatures, not merely deny everything.
+        phase('rotated-key-allows-new-signature', repo='wrong-signature', count=20, warmup=0)
+        phase('other-namespace-retains-original-key', count=20, warmup=0, target_namespace='default')
+        phase('other-namespace-rejects-rotated-key', repo='wrong-signature', count=20,
+              expected='policy_denied', warmup=0, target_namespace='default')
         apply_policy(bootstrap['publicKey'])
         phase('restored-key-allows', count=20, warmup=0)
         (args.output / 'webhook-before-outage.log').write_text(command(kube + ['-n', 'modelgate-system', 'logs', 'deployment/modelgate-webhook']), encoding='utf-8')

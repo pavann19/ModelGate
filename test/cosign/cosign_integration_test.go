@@ -1,4 +1,4 @@
-// Package cosign tests real cosign 2.4.1 against a TLS OCI registry and real signatures.
+// Package cosign tests real cosign 3.1.4 against a TLS OCI registry and real signatures.
 package cosign
 
 import (
@@ -27,8 +27,8 @@ func requireTool(t *testing.T, name string) {
 func TestCosignVerifier_RealSignedAndUnsignedImages(t *testing.T) {
 	requireTool(t, "cosign")
 	version, err := exec.Command("cosign", "version").CombinedOutput()
-	if err != nil || !strings.Contains(string(version), "GitVersion:    v2.4.1") {
-		t.Fatalf("expected pinned cosign v2.4.1: %s", version)
+	if err != nil || !strings.Contains(string(version), "GitVersion:    v3.1.4") {
+		t.Fatalf("expected pinned cosign v3.1.4: %s", version)
 	}
 	fixture := newTLSRegistry(t)
 	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1")

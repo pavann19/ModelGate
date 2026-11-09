@@ -1,0 +1,55 @@
+name: Distribution binary security
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - Dockerfile
+      - go.mod
+      - go.sum
+      - .dockerignore
+      - 'cmd/**'
+      - 'internal/**'
+      - 'api/**'
+      - .github/workflows/distribution-security.yml
+
+permissions:
+  contents: read
+
+jobs:
+  binary-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.27.3'
+      - name: Build the distribution image without publishing
+        run: docker build --pull -t modelgate-security:ci .
+      - name: Scan the shipped Go executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/binary-security
+          id=$(docker create modelgate-security:ci)
+          trap 'docker rm "$id"' EXIT
+          docker cp "$id:/webhook" artifacts/binary-security/webhook
+          docker image inspect modelgate-security:ci --format '{{.Id}}' > artifacts/binary-security/image-id.txt
+          failed=0
+          for binary in webhook; do
+            if ! go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 -mode binary \
+              "artifacts/binary-security/$binary" > "artifacts/binary-security/$binary-scan.txt" 2>&1; then
+              failed=1
+            fi
+            cat "artifacts/binary-security/$binary-scan.txt"
+          done
+          exit "$failed"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: distribution-binary-security
+          path: |
+            artifacts/binary-security/*-scan.txt
+            artifacts/binary-security/image-id.txt
+          if-no-files-found: warn

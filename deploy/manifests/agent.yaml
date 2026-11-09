@@ -1,6 +1,13 @@
 # Separate single-worker lab topology. No admission path dependency, credentials,
 # or policy-write RBAC. Explicit --offline mode is a deterministic fallback.
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: modelgate-analysis
+  namespace: modelgate-system
+automountServiceAccountToken: false
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: modelgate-analysis
@@ -23,6 +30,8 @@ spec:
       labels: {app: modelgate-analysis}
     spec:
       automountServiceAccountToken: false
+      serviceAccountName: modelgate-analysis
+      enableServiceLinks: false
       terminationGracePeriodSeconds: 40
       securityContext:
         runAsNonRoot: true

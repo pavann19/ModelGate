@@ -5,7 +5,5 @@ resources:
   - manifests/namespace.yaml
   - manifests/rbac.yaml
   - manifests/deployment.yaml
-images:
-  - name: modelgate-webhook
-    newName: ghcr.io/pavann19/modelgate
-    newTag: latest
+# Local lab entrypoint: retains modelgate-webhook:kind from the manifest.
+# Release installations use the digest-required Helm chart and reviewed values.

@@ -10,7 +10,8 @@ Restrict ingress to API-server connections using your platform's network control
 
 Public keys are not secrets. Private signing keys are never loaded by the webhook; test scripts
 create temporary keys. TLS private keys remain operator-provisioned Kubernetes Secrets.
-Cosign skips transparency-log verification. This removes log inclusion/audit assurance and does not
+The bounded-v1 verifier accepts only PKIX PEM ECDSA P-256 keys and SHA-256/ASN.1 DER signatures.
+Transparency-log verification, provenance, keyless identity, expiry and revocation are unsupported. This removes log inclusion/audit assurance and does not
 provide compromise detection or revocation beyond replacement of the configured public key.
 
 ## Limitations

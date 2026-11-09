@@ -19,6 +19,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 // RegistryPolicy is operator-owned, separate from namespace signing policies.
@@ -113,7 +115,7 @@ func LoadRegistryPolicy(path string) (*RegistryPolicy, error) {
 	if err != nil || len(b) > 1024*1024 {
 		return nil, errors.New("invalid registry policy size")
 	}
-	if rejectAmbiguousJSON(b) != nil {
+	if rejectRegistryJSON(b) != nil {
 		return nil, errors.New("ambiguous registry policy JSON")
 	}
 	var p RegistryPolicy
@@ -287,7 +289,33 @@ func (c *registryClient) get(ctx context.Context, rawURL, authorization string, 
 	return b, resp, nil
 }
 
-var bearerFields = regexp.MustCompile(`([a-z]+)="([^"\r\n]*)"`)
+var bearerFields = regexp.MustCompile(`^([A-Za-z][A-Za-z0-9_-]*)="([^"\\\r\n]*)"[ \t]*(,|$)`)
+
+// Parse the entire challenge; substring matches must not hide malformed or
+// duplicate authentication parameters. Attribute names and schemes ignore case.
+func parseBearerChallenge(challenge string) (map[string]string, error) {
+	scheme, rest, ok := strings.Cut(challenge, " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") {
+		return nil, errors.New("unsupported registry authentication")
+	}
+	fields := map[string]string{}
+	for {
+		rest = strings.Trim(rest, " \t")
+		m := bearerFields.FindStringSubmatch(rest)
+		if m == nil {
+			return nil, errors.New("invalid authentication challenge")
+		}
+		key := strings.ToLower(m[1])
+		if _, exists := fields[key]; exists {
+			return nil, errors.New("ambiguous authentication challenge")
+		}
+		fields[key] = m[2]
+		rest = rest[len(m[0]):]
+		if m[3] == "" {
+			return fields, nil
+		}
+	}
+}
 
 func (c *registryClient) fetch(ctx context.Context, path string, limit int64) ([]byte, error) {
 	rawURL := "https://" + c.rule.Host + path
@@ -296,16 +324,13 @@ func (c *registryClient) fetch(ctx context.Context, path string, limit int64) ([
 		return nil, err
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
-		challenge := resp.Header.Get("WWW-Authenticate")
-		if !strings.HasPrefix(challenge, "Bearer ") {
-			return nil, errors.New("unsupported registry authentication")
+		challenges := resp.Header.Values("WWW-Authenticate")
+		if len(challenges) != 1 {
+			return nil, errors.New("ambiguous authentication challenge")
 		}
-		fields := map[string]string{}
-		for _, m := range bearerFields.FindAllStringSubmatch(challenge, -1) {
-			if _, ok := fields[m[1]]; ok {
-				return nil, errors.New("ambiguous authentication challenge")
-			}
-			fields[m[1]] = m[2]
+		fields, err := parseBearerChallenge(challenges[0])
+		if err != nil {
+			return nil, err
 		}
 		realm, err := url.Parse(fields["realm"])
 		if err != nil || realm.Scheme != "https" || realm.User != nil || realm.Fragment != "" {
@@ -329,7 +354,8 @@ func (c *registryClient) fetch(ctx context.Context, path string, limit int64) ([
 			Token       string `json:"token"`
 			AccessToken string `json:"access_token"`
 		}
-		if json.Unmarshal(tokenBody, &token) != nil {
+		if rejectRegistryJSON(tokenBody) != nil || json.Unmarshal(tokenBody, &token) != nil ||
+			(token.Token != "" && token.AccessToken != "" && token.Token != token.AccessToken) {
 			return nil, errors.New("invalid registry token")
 		}
 		if token.Token == "" {
@@ -385,7 +411,7 @@ func (c *registryClient) signatures(ctx context.Context, id imageIdentity) ([]si
 			Annotations map[string]string `json:"annotations"`
 		} `json:"layers"`
 	}
-	if rejectAmbiguousJSON(raw) != nil || json.Unmarshal(raw, &m) != nil || m.SchemaVersion != 2 || len(m.Layers) == 0 || len(m.Layers) > 16 {
+	if rejectRegistryJSON(raw) != nil || json.Unmarshal(raw, &m) != nil || m.SchemaVersion != 2 || len(m.Layers) == 0 || len(m.Layers) > 16 {
 		return nil, errors.New("invalid signature manifest")
 	}
 	var out []signaturePayload
@@ -412,7 +438,7 @@ func (c *registryClient) signatures(ctx context.Context, id imageIdentity) ([]si
 				Type string `json:"type"`
 			} `json:"critical"`
 		}
-		if rejectAmbiguousJSON(data) != nil || json.Unmarshal(data, &payload) != nil || payload.Critical.Image.Digest != id.digest || payload.Critical.Identity.Reference != id.registry+"/"+id.repository || payload.Critical.Type != "cosign container image signature" {
+		if rejectRegistryJSON(data) != nil || json.Unmarshal(data, &payload) != nil || payload.Critical.Image.Digest != id.digest || payload.Critical.Identity.Reference != id.registry+"/"+id.repository || payload.Critical.Type != "cosign container image signature" {
 			return nil, errors.New("signature does not bind the requested repository and digest")
 		}
 		out = append(out, signaturePayload{Data: data, Signature: sig})
@@ -422,6 +448,20 @@ func (c *registryClient) signatures(ctx context.Context, id imageIdentity) ([]si
 
 // Reject duplicate JSON keys rather than accepting last-value precedence in a trust document.
 func rejectAmbiguousJSON(b []byte) error {
+	return rejectJSONKeys(b, false)
+}
+
+// Registry trust documents intentionally reject case-folded key collisions,
+// matching encoding/json's struct field matching. Workload metadata maps remain
+// case-sensitive and use rejectAmbiguousJSON instead.
+func rejectRegistryJSON(b []byte) error {
+	return rejectJSONKeys(b, true)
+}
+
+func rejectJSONKeys(b []byte, fold bool) error {
+	if !utf8.Valid(b) {
+		return errors.New("invalid JSON UTF-8")
+	}
 	d := json.NewDecoder(strings.NewReader(string(b)))
 	var walk func(int) error
 	walk = func(depth int) error {
@@ -441,6 +481,17 @@ func rejectAmbiguousJSON(b []byte) error {
 					return err
 				}
 				key, ok := k.(string)
+				if fold {
+					key = strings.Map(func(r rune) rune {
+						minimum := r
+						for next := unicode.SimpleFold(r); next != r; next = unicode.SimpleFold(next) {
+							if next < minimum {
+								minimum = next
+							}
+						}
+						return minimum
+					}, key)
+				}
 				if !ok || seen[key] {
 					return errors.New("duplicate JSON key")
 				}

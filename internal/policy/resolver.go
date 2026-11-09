@@ -51,14 +51,16 @@ func NewResolver(reader client.Reader) *Resolver {
 // from silently taking precedence.
 func (r *Resolver) Resolve(ctx context.Context, namespace string) (Resolution, error) {
 	var list modelgatev1alpha1.ModelGatePolicyList
-	if err := r.Reader.List(ctx, &list, client.InNamespace(namespace)); err != nil {
+	// Two objects suffice to detect ambiguity; never download an unbounded
+	// tenant-created policy collection into each admission worker.
+	if err := r.Reader.List(ctx, &list, client.InNamespace(namespace), client.Limit(2)); err != nil {
 		return Resolution{}, fmt.Errorf("listing ModelGatePolicy in namespace %q: %w", namespace, err)
 	}
 	if len(list.Items) == 0 {
 		return Resolution{}, fmt.Errorf("%w: namespace %q", ErrNoPolicy, namespace)
 	}
 
-	if len(list.Items) != 1 {
+	if len(list.Items) != 1 || list.Continue != "" {
 		return Resolution{}, fmt.Errorf("ambiguous policy: namespace %q has %d policies", namespace, len(list.Items))
 	}
 	chosen := list.Items[0]
@@ -68,7 +70,7 @@ func (r *Resolver) Resolve(ctx context.Context, namespace string) (Resolution, e
 
 	if chosen.Spec.Exempt {
 		r.logger().Warn("namespace is exempt from ModelGate checks",
-			"namespace", namespace, "policy", chosen.Name, "reason", chosen.Spec.ExemptionReason)
+			"namespace", namespace, "policy", chosen.Name)
 		return Resolution{Exempt: true, ExemptionReason: chosen.Spec.ExemptionReason}, nil
 	}
 

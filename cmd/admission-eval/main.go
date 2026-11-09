@@ -27,6 +27,7 @@ type sample struct {
 	Index        int     `json:"index"`
 	Milliseconds float64 `json:"milliseconds"`
 	Outcome      string  `json:"outcome"`
+	Error        string  `json:"error,omitempty"`
 }
 
 type report struct {
@@ -36,8 +37,10 @@ type report struct {
 	Context           string                        `json:"context"`
 	Namespace         string                        `json:"namespace"`
 	Image             string                        `json:"image"`
+	Images            []string                      `json:"images,omitempty"`
 	Expected          string                        `json:"expected"`
 	Concurrency       int                           `json:"concurrency"`
+	Containers        int                           `json:"containersPerPod"`
 	Warmup            int                           `json:"warmup"`
 	Seconds           float64                       `json:"seconds"`
 	RequestsPerSecond float64                       `json:"completedRequestsPerSecond"`
@@ -85,13 +88,27 @@ func matches(expected, actual string) bool {
 	return expected == actual
 }
 
-func measure(ctx context.Context, client *kubernetes.Clientset, namespace, image string, index int) sample {
-	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("admission-eval-%d", index), Namespace: namespace}, Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "eval", Image: image}}}}
+func measure(ctx context.Context, client *kubernetes.Clientset, namespace, image string, index, containers int) sample {
+	return measureImages(ctx, client, namespace, []string{image}, index, containers)
+}
+
+func measureImages(ctx context.Context, client *kubernetes.Clientset, namespace string, images []string, index, containers int) sample {
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("admission-eval-%d", index), Namespace: namespace}}
+	for i := 0; i < containers; i++ {
+		pod.Spec.Containers = append(pod.Spec.Containers, corev1.Container{Name: fmt.Sprintf("eval-%d", i), Image: images[i%len(images)]})
+	}
 	started := time.Now()
 	err := client.CoreV1().RESTClient().Post().Namespace(namespace).Resource("pods").
 		VersionedParams(&metav1.CreateOptions{DryRun: []string{metav1.DryRunAll}}, scheme.ParameterCodec).
 		Body(pod).MaxRetries(0).Do(ctx).Error()
-	return sample{Index: index, Milliseconds: float64(time.Since(started).Microseconds()) / 1000, Outcome: outcome(err)}
+	s := sample{Index: index, Milliseconds: float64(time.Since(started).Microseconds()) / 1000, Outcome: outcome(err)}
+	if err != nil {
+		s.Error = err.Error()
+		if len(s.Error) > 1024 {
+			s.Error = s.Error[:1024]
+		}
+	}
+	return s
 }
 
 func run() error {
@@ -99,13 +116,27 @@ func run() error {
 	contextName := flag.String("context", "", "required explicit disposable-cluster context")
 	namespace := flag.String("namespace", "modelgate-eval", "preconfigured evaluation namespace")
 	image := flag.String("image", "", "exact signed/unsigned registry/repository@sha256 reference")
+	imageList := flag.String("images", "", "optional comma-separated immutable images, cycled across containers for distinct-image controls")
 	expected := flag.String("expect", "allowed", "allowed, policy_denied, webhook_unavailable, overload or saturation")
 	requests := flag.Int("requests", 100, "measured requests (1..10000)")
 	workers := flag.Int("concurrency", 1, "closed-loop workers (1..64)")
+	containers := flag.Int("containers", 1, "containers per Pod using the same exact image (1..32)")
 	warmup := flag.Int("warmup", 5, "sequential warmup requests, checked but not timed in summary")
 	output := flag.String("output", "", "required new JSON output path; never overwrites existing evidence")
 	flag.Parse()
-	if *contextName == "" || *output == "" || !strings.Contains(*image, "@sha256:") || *requests < 1 || *requests > 10000 || *workers < 1 || *workers > 64 || *warmup < 0 || *warmup > 100 {
+	images := []string{*image}
+	if *imageList != "" {
+		images = strings.Split(*imageList, ",")
+	}
+	if len(images) > 32 {
+		return fmt.Errorf("too many images")
+	}
+	for _, ref := range images {
+		if !strings.Contains(ref, "@sha256:") {
+			return fmt.Errorf("immutable image required")
+		}
+	}
+	if *contextName == "" || *output == "" || !strings.Contains(*image, "@sha256:") || *requests < 1 || *requests > 10000 || *workers < 1 || *workers > 64 || *warmup < 0 || *warmup > 100 || *containers < 1 || *containers > 32 {
 		return fmt.Errorf("explicit context, immutable image, new output path and bounded request settings required")
 	}
 	if *expected != "allowed" && *expected != "policy_denied" && *expected != "webhook_unavailable" && *expected != "overload" && *expected != "saturation" {
@@ -135,7 +166,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	request := func(index int) sample {
-		return measure(ctx, client, *namespace, *image, index)
+		return measureImages(ctx, client, *namespace, images, index, *containers)
 	}
 	for i := 0; i < *warmup; i++ {
 		s := request(-i - 1)
@@ -143,7 +174,8 @@ func run() error {
 			return fmt.Errorf("warmup outcome %s does not match %s", s.Outcome, *expected)
 		}
 	}
-	r := report{Schema: 1, Started: time.Now().UTC(), Go: runtime.Version(), Context: *contextName, Namespace: *namespace, Image: *image, Expected: *expected, Concurrency: *workers, Warmup: *warmup, Counts: map[string]int{}, Samples: make([]sample, *requests), Passed: true}
+	r := report{Schema: 1, Started: time.Now().UTC(), Go: runtime.Version(), Context: *contextName, Namespace: *namespace, Image: *image, Expected: *expected, Concurrency: *workers, Containers: *containers, Warmup: *warmup, Counts: map[string]int{}, Samples: make([]sample, *requests), Passed: true}
+	r.Images = images
 	jobs := make(chan int)
 	var wg sync.WaitGroup
 	started := time.Now()

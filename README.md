@@ -13,6 +13,9 @@ All 60 intentional-outage requests failed closed; admission resumed 6.05–9.21 
 scale-up. These are single-node kind observations, with raw samples and contention limits
 published alongside the results; they are not production capacity or availability guarantees.
 
+Current [security demonstration](docs/security/DEMONSTRATION.md) documents bounded-v1 compatibility,
+local test evidence and remaining deployment gates. No production readiness claim is made.
+
 ## Enforcement
 
 - The production verifier requires `repository@sha256:<64 lowercase hex characters>` and verifies
@@ -27,7 +30,8 @@ published alongside the results; they are not production capacity or availabilit
 
 The artifact annotation is optional. ModelGate does not discover unannotated models, bind a
 webhook-local file to workload mounts, enforce provenance/SBOMs, or monitor running containers.
-Cosign transparency-log verification is disabled; the operator-managed public key is the trust root.
+Provenance, keyless identity, transparency-log, expiry and revocation checks are unsupported;
+the operator-managed public key is the trust root.
 
 ## Read and run
 
@@ -44,7 +48,9 @@ Cosign transparency-log verification is disabled; the operator-managed public ke
 - [Admission examples](docs/DENY_EXAMPLES.md)
 - [Historical ACR publication evidence](docs/AZURE_ACR_EVIDENCE.md)
 
-Build with Go 1.27.3: `go build ./cmd/webhook`. The runtime image includes cosign 2.4.1.
+Build with Go 1.27.3: `go build ./cmd/webhook`. The runtime uses bounded-v1 Go cryptography without an external verification executable.
+Only PKIX PEM ECDSA P-256 keys and SHA-256/ASN.1 DER signatures are supported.
+See the [verification contract](docs/engineering/architecture_decisions/ADR-001-bounded-verification.md).
 Run dependency-free unit suites with `go test ./internal/... ./api/... ./cmd/...`.
 `go test ./...` additionally requires envtest assets, Docker and cosign; it is not a unit-only command.
 See the testing guide for prerequisite setup and the distinction between mocks and real infrastructure.

@@ -21,8 +21,8 @@ KUBEBUILDER_ASSETS path before `go test ./test/e2e/... -v -timeout 120s`.
 | internal | Unit tests; fake policy/image/file dependencies where specified; production tag rejection and real file-limit regressions |
 | test/e2e | Real envtest API server and webhook TLS; fake image verifier/artifact fetcher |
 | test/e2e/failurepolicy | Real API server transport failure semantics; Fail and intentionally insecure Ignore controls |
-| test/cosign | Real TLS OCI registry fixture on a private interface, real ECDSA signatures and real pinned cosign production verifier; missing binaries skip locally but fail in CI |
-| deploy/kind/private-registry-smoke.py | Actual hardened image, raw RBAC/TLS/admission, private TLS OCI fixture and real cosign on kind; server dry-runs, no kubelet claim |
+| test/cosign | Real TLS OCI registry fixture on a private interface, real ECDSA signatures and bounded-v1 production Go verifier; separate pinned Cosign v3.1.4 oracle is mandatory in its dedicated CI step |
+| deploy/kind/private-registry-smoke.py | Actual hardened image, raw RBAC/TLS/admission, private TLS OCI fixture and production signature verification on kind; server dry-runs, no kubelet claim |
 | bench | 200 sequential envtest Pod creates; static fake policy resolver and always-successful fake signature verifier |
 
 The benchmark does NOT measure real cosign latency, registry downloads, real CRD policy reads,
@@ -30,7 +30,7 @@ model-file verification, scheduling, kubelet behavior or cluster scale. Its trac
 raw sample retained for reproducibility, not a product performance claim. Running it overwrites that
 file; preserve the original and compare run provenance before publishing any result.
 
-CI uses commit-pinned actions, Go 1.27.3, cosign 2.4.1 and Helm 3.16.4. Docker base/cosign source images are digest-pinned.
+CI uses commit-pinned actions, Go 1.27.3, Cosign v3.1.4 test oracle and Helm 3.16.4. Docker build/runtime base images are digest-pinned.
 CI configures unit/race/build/vet, envtest, cosign, pickle fuzz, chart rendering and kind jobs.
 Job definitions are reproducible instructions; execution and branch-protection status require live
 verification. A pinned govulncheck command runs in the unit job. The current CI includes a pinned secret scan. An image scanner and SBOM job are not present

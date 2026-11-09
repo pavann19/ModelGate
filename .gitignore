@@ -32,3 +32,6 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+
+# Private coordination and generated validation output.
+artifacts/

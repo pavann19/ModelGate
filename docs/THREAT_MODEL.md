@@ -7,13 +7,13 @@ trusted signing-key holders and webhook filesystem writers are trusted and can b
 | Abuse case | Current behavior / evidence boundary |
 | --- | --- |
 | Mutable tag changed after verification | Production verifier rejects tag references; digest regression tests |
-| Digest switched or wrong-object signature | Exact digest passed to cosign; real signed/unsigned integration must run |
+| Digest switched or wrong-object signature | Exact repository/digest/type checked before bounded-v1 verification; real TLS-registry/API tests passed locally |
 | Registry redirect or DNS rebinding | Numeric IP dial bound to operator CIDRs; redirects denied; adversarial transport and production-verifier tests |
 | Wrong policy/cache identity | No positive cache; namespace consistency checked; direct policy reads |
-| Malformed signature/unsupported algorithm | Offline cosign rejects invalid signatures/keys; real signed/unsigned/wrong-key/payload matrix |
+| Malformed signature/unsupported algorithm | Bounded-v1 rejects invalid/unsupported signatures/keys; independent Cosign oracle plus real-registry controls |
 | Missing provenance | Not enforced; no provenance claim |
 | Policy reload/key rotation race | Request snapshot only; no cached positives, no runtime revocation |
-| Concurrent requests | Per-call key files and maps; production handler caps concurrent checks at eight and denies saturation |
+| Concurrent requests | No subprocess or temporary key files; production handler caps concurrent checks at eight and denies saturation |
 | Pod image mutation/ephemeral container | UPDATE and ephemeral-subresource rules; envtest adversarial suites |
 | Timeout/outage | Fail rejects transport timeout; handler errors deny; Ignore explicitly downgrades enforcement |
 | Unauthorized direct caller | No mTLS/userInfo authorization; caller cannot thereby create a Kubernetes Pod |
@@ -23,7 +23,7 @@ trusted signing-key holders and webhook filesystem writers are trusted and can b
 | Retry amplification | No handler retries; registry fetch has one auth retry; numeric dial attempts only approved returned IPs; API-server retries external |
 | Queue saturation | No queue; eight production slots; saturation denies, regression tested |
 | Stale approval | No verification cache; already-admitted Pods remain running |
-| Error information leakage | Retained verifier stderr bounded, content not redacted |
+| Error information leakage | Bounded generic dependency errors; panic/exemption details redacted with regression coverage |
 
 Admission does not bind a model file to a workload volume or prevent later file changes. Digest-pinned
 images close the tag race; they do not close every runtime supply-chain problem.

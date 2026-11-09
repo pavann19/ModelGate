@@ -32,9 +32,11 @@ once at startup; rotate the Secret and restart the Deployment to reload atomical
 5. Fetch the exact image manifest and check its SHA-256; fetch `sha256-<digest>.sig` and its
    content-addressed payload layers, checking descriptor sizes and SHA-256.
 6. Reject payloads that do not name the exact requested repository, digest and cosign signature type.
-7. Write the payload, signature and policy public key to private temporary files, then run pinned
-   cosign 2.4.1 `verify-blob --offline --insecure-ignore-tlog=true` with local file operands.
-   Cosign does not resolve image tags or download registry content in this path.
+7. Verify the detached signature using Go cryptography, without a subprocess or temporary files.
+   Bounded-v1 accepts only PKIX PEM ECDSA P-256 keys, SHA-256 and base64 ASN.1 DER signatures.
+   Keys are limited to 16 KiB, payloads to 64 KiB and decoded signatures to 72 bytes.
+   RSA, Ed25519 and other curves fail closed. This breaking scope is recorded in ADR-001.
+   No keyless, provenance, transparency-log, expiry or revocation claim follows from this check.
 
 The image reference passed to Kubernetes remains the same immutable reference being authorized.
 No alternate online CosignVerifier path exists. The handler's eight slots and ten-second verifier
@@ -54,8 +56,10 @@ Credentials are sent only to the reviewed token endpoint. Docker credential help
 imagePullSecrets and inherited proxy/COSIGN_REPOSITORY/DOCKER_CONFIG settings are not consumed.
 Serving a private CA is supported with `caPEM`; disabling TLS validation is not supported.
 
-Errors are generic and never return registry bodies, auth challenge text, tokens or cosign stderr.
-Namespace policy errors and file/model validation retain their separately documented error surfaces.
+Errors are generic and never return registry bodies, auth challenge text, tokens or dependency errors.
+Policy, verification and artifact failures return bounded reasons; arbitrary exemption reasons are not logged.
+Registry document keys reject case-fold ambiguity and invalid UTF-8. Bearer challenges must be a
+fully consumed single challenge; escaped values, duplicate attributes and multiple headers are rejected.
 
 ## Installation
 

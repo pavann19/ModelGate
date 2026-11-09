@@ -20,6 +20,7 @@ spec:
         app: modelgate-webhook
     spec:
       terminationGracePeriodSeconds: 40
+      enableServiceLinks: false
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -42,8 +43,8 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
           resources:
-            requests: {cpu: 100m, memory: 128Mi}
-            limits: {cpu: "1", memory: 512Mi}
+            requests: {cpu: 100m, memory: 128Mi, ephemeral-storage: 128Mi}
+            limits: {cpu: "1", memory: 512Mi, ephemeral-storage: 256Mi}
           image: modelgate-webhook:kind
           imagePullPolicy: IfNotPresent
           args:
