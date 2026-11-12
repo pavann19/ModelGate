@@ -1,6 +1,6 @@
 module github.com/pavann19/modelgate
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/prometheus/client_golang v1.19.1
