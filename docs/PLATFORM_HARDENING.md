@@ -107,5 +107,5 @@ scans and provenance, independent host failure domains, quotas and operational a
 Do not apply a generic kube-apiserver/etcd configuration to an existing cluster without a reviewed
 target-specific change plan. ModelGate cannot establish those host/provider controls from Helm.
 
-The original 24-hour acceptance remains incomplete after the user stopped the historical run
+The original 24-hour acceptance remains incomplete after the historical run stopped
 at 15 hours. Historical lifecycle/rotation results are not validation of a new hardening candidate.
