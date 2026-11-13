@@ -20,7 +20,7 @@ python3 deploy/kind/platform-eval.py \
 kind delete cluster --name modelgate-platform
 ```
 
-Prerequisites match [kind integration](KIND_DEMO.md), plus Go 1.27.3 to build `cmd/admission-eval`.
+Prerequisites match [kind integration](KIND_DEMO.md), plus Go 1.27.4 to build `cmd/admission-eval`.
 Windows users can select an installed MSYS bash using `BASH_BIN` and put its openssl/envsubst on
 PATH. `MODELGATE_EVIDENCE_DIR` redirects the smoke's bootstrap/evidence location; pass that same
 bootstrap file to this runner. Generated evidence and binaries stay out of Git and Docker contexts.

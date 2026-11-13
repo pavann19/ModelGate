@@ -48,7 +48,7 @@ the operator-managed public key is the trust root.
 - [Admission examples](docs/DENY_EXAMPLES.md)
 - [Historical ACR publication evidence](docs/AZURE_ACR_EVIDENCE.md)
 
-Build with Go 1.27.3: `go build ./cmd/webhook`. The runtime uses bounded-v1 Go cryptography without an external verification executable.
+Build with Go 1.27.4: `go build ./cmd/webhook`. The runtime uses bounded-v1 Go cryptography without an external verification executable.
 Only PKIX PEM ECDSA P-256 keys and SHA-256/ASN.1 DER signatures are supported.
 See the [verification contract](docs/engineering/architecture_decisions/ADR-001-bounded-verification.md).
 Run dependency-free unit suites with `go test ./internal/... ./api/... ./cmd/...`.
