@@ -28,7 +28,7 @@ The [verified CI run](https://github.com/pavann19/ModelGate/actions/runs/4131912
 for runtime revision e9af94f passed Linux, real Cosign, envtest, Helm and kind
 integration checks. Repeat required checks for each PR merge candidate. A
 separately published release image and its redistribution review remain separate gates.
-The retained lab observation stopped at the user's 15-hour checkpoint; the original
+The retained lab observation stopped after 15 hours; the original
 24-hour gate is incomplete. A matched eight-distinct-image concurrency-four control
 regressed; no general speedup claim is supported. Local cached-image lab tools and
 raw evidence are outside this source candidate. CNI enforcement and production
