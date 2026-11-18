@@ -16,6 +16,32 @@ published alongside the results; they are not production capacity or availabilit
 Current [security demonstration](docs/security/DEMONSTRATION.md) documents bounded-v1 compatibility,
 local test evidence and remaining deployment gates. No production readiness claim is made.
 
+## Architecture
+
+An admission request reaches the webhook, which consults namespace policy and verification checks before its decision.
+
+```mermaid
+flowchart LR
+    A["Kubernetes API server"]
+    W["Validating webhook"]
+    P["Namespace policy source"]
+    S["Image signature verification"]
+    O["Optional model-artifact check"]
+    Y["Allow admission"]
+    N["Deny / fail closed"]
+    Q["Proposal-only analysis worker"]
+    A --> W
+    W --> P
+    W --> S
+    W --> O
+    W --> Y
+    W --> N
+    A --> N
+    W -.-> Q
+```
+
+Simplified view; see [admission lifecycle](docs/ADMISSION_LIFECYCLE.md) for details.
+
 ## Enforcement
 
 - The production verifier requires `repository@sha256:<64 lowercase hex characters>` and verifies
