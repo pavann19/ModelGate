@@ -3,15 +3,6 @@ name: Distribution binary security
 on:
   workflow_dispatch:
   pull_request:
-    paths:
-      - Dockerfile
-      - go.mod
-      - go.sum
-      - .dockerignore
-      - 'cmd/**'
-      - 'internal/**'
-      - 'api/**'
-      - .github/workflows/distribution-security.yml
 
 permissions:
   contents: read
