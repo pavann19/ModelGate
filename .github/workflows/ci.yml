@@ -51,6 +51,8 @@ jobs:
         run: python3 -B hack/check-resource-improvement-evidence.py
       - name: Recompute historical October latency comparison
         run: python3 -B hack/check-october-latency.py
+      - name: Recompute historical October signature and outage trials
+        run: python3 -B hack/check-october-trust-outage.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
