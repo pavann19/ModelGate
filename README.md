@@ -21,6 +21,11 @@ The [historical matched latency comparison](docs/OCTOBER_LATENCY_COMPARISON.md) 
 concurrent workers in local kind trials, with all 800 samples and a recomputation script.
 This workload-specific October result is not a benchmark of current main or a production SLO.
 
+The [matching October trust/outage record](docs/OCTOBER_TRUST_OUTAGE_VALIDATION.md)
+documents 420/420 repeated negative-signature controls denied, 120/120 selected positive
+controls admitted, and 60/60 injected webhook-outage requests blocked, with observed
+local recovery of 2.97–6.04 s. This is a separate dataset from the case study's 6.05–9.21 s run.
+
 ## Architecture
 
 An admission request reaches the webhook, which consults namespace policy and verification checks before its decision.

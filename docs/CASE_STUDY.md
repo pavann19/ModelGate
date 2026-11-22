@@ -83,6 +83,12 @@ release CI result is not claimed for these additions. Historical benchmark sampl
 
 ## Limits
 
+A [separate October validation](OCTOBER_TRUST_OUTAGE_VALIDATION.md) records 420 repeated
+negative-signature controls, 120 selected positive controls and 60 injected webhook-outage
+requests, with recovery of 2.97–6.04 s. Its samples, source identity and restoration
+observations are published separately. The 6.05–9.21 s figures above belong only to this
+case study's original dataset; they must not be combined with the later trial counts.
+
 The experiment uses API-server dry-runs and minimal OCI fixtures. It does not measure kubelet
 image pulls, model serving, multi-node scale, managed-cloud operation or runtime revocation.
 The optional model-file check inspects webhook-local files, not workload volumes. Metrics remain
