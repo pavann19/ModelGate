@@ -16,6 +16,11 @@ published alongside the results; they are not production capacity or availabilit
 Current [security demonstration](docs/security/DEMONSTRATION.md) documents bounded-v1 compatibility,
 local test evidence and remaining deployment gates. No production readiness claim is made.
 
+The [historical matched latency comparison](docs/OCTOBER_LATENCY_COMPARISON.md) records
+**4.203 s → 600.8 ms p95 (85.7% reduction)** for eight same-image containers and four
+concurrent workers in local kind trials, with all 800 samples and a recomputation script.
+This workload-specific October result is not a benchmark of current main or a production SLO.
+
 ## Architecture
 
 An admission request reaches the webhook, which consults namespace policy and verification checks before its decision.

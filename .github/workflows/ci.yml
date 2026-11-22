@@ -49,6 +49,8 @@ jobs:
           } 2>&1 | tee unit-tests-output.txt
       - name: Recompute retained resource measurements
         run: python3 -B hack/check-resource-improvement-evidence.py
+      - name: Recompute historical October latency comparison
+        run: python3 -B hack/check-october-latency.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
