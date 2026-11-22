@@ -29,6 +29,13 @@ var errRegistryRedirect = errors.New("registry redirects are forbidden")
 
 type RegistryPolicy struct {
 	Registries []RegistryRule `json:"registries"`
+	// Loaded policies retain bounded TLS transports, never verification results.
+	// Entries are immutable after loading; changed exported rules take the uncached path.
+	compiled map[string]compiledRegistry
+}
+type compiledRegistry struct {
+	ruleJSON string
+	client   *registryClient
 }
 type RegistryRule struct {
 	Host      string             `json:"host"`
@@ -46,12 +53,14 @@ type registryClient struct {
 	endpoints map[string][]netip.Prefix
 	client    *http.Client
 	lookup    func(context.Context, string, string) ([]netip.Addr, error)
+	shared    bool
 }
 type imageIdentity struct{ registry, repository, digest string }
 
 var repositoryPattern = regexp.MustCompile(`^[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*)*$`)
 var hostPattern = regexp.MustCompile(`^[a-z0-9]+(?:[.-][a-z0-9]+)*$`)
 var shaPattern = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
+var ambiguousIPv4Pattern = regexp.MustCompile(`^[0-9]+(?:\.[0-9]+){3}$`)
 
 func parseImage(image string) (imageIdentity, error) {
 	fail := fmt.Errorf("image must use an immutable explicit-registry/repository@sha256 digest reference")
@@ -80,7 +89,7 @@ func canonicalAuthority(s string) (string, error) {
 		if ip.Is4In6() || ip.String() != host {
 			return "", errors.New("ambiguous IP")
 		}
-	} else if regexp.MustCompile(`^[0-9]+(?:\.[0-9]+){3}$`).MatchString(host) {
+	} else if ambiguousIPv4Pattern.MatchString(host) {
 		return "", errors.New("ambiguous IPv4 address")
 	} else if !hostPattern.MatchString(host) || !strings.Contains(host, ".") {
 		return "", errors.New("explicit DNS endpoint required")
@@ -93,9 +102,6 @@ func canonicalAuthority(s string) (string, error) {
 		return "", errors.New("ambiguous port")
 	}
 	addr := net.JoinHostPort(host, port)
-	if _, err := net.LookupPort("tcp", port); err != nil || regexp.MustCompile(`^[0-9]+$`).FindString(port) != port {
-		return "", errors.New("invalid port")
-	}
 	// Keep the external authority exactly as configured, with default 443 optional.
 	if u.Port() == "" {
 		if strings.Contains(host, ":") {
@@ -128,14 +134,19 @@ func LoadRegistryPolicy(path string) (*RegistryPolicy, error) {
 		return nil, errors.New("trailing registry policy JSON")
 	}
 	seen := map[string]bool{}
+	p.compiled = make(map[string]compiledRegistry)
 	for _, r := range p.Registries {
 		if seen[r.Host] {
 			return nil, errors.New("duplicate registry")
 		}
 		seen[r.Host] = true
-		if _, err := newRegistryClient(r); err != nil {
+		c, err := newRegistryClient(r)
+		if err != nil {
 			return nil, err
 		}
+		c.shared = true
+		raw, _ := json.Marshal(r)
+		p.compiled[r.Host] = compiledRegistry{ruleJSON: string(raw), client: c}
 	}
 	if len(p.Registries) == 0 {
 		return nil, errors.New("registry policy must explicitly trust at least one registry")
@@ -146,11 +157,26 @@ func (p *RegistryPolicy) forImage(id imageIdentity) (*registryClient, error) {
 	if p != nil {
 		for _, r := range p.Registries {
 			if r.Host == id.registry {
+				if entry, ok := p.compiled[r.Host]; ok {
+					raw, _ := json.Marshal(r)
+					if string(raw) == entry.ruleJSON {
+						return entry.client, nil
+					}
+				}
 				return newRegistryClient(r)
 			}
 		}
 	}
 	return nil, errors.New("registry destination is not trusted")
+}
+
+// CloseIdleConnections releases pooled sockets during operator-controlled shutdown.
+func (p *RegistryPolicy) CloseIdleConnections() {
+	if p != nil {
+		for _, entry := range p.compiled {
+			entry.client.client.CloseIdleConnections()
+		}
+	}
 }
 func newRegistryClient(r RegistryRule) (*registryClient, error) {
 	if authority, err := canonicalAuthority(r.Host); err != nil || authority != r.Host {
@@ -193,7 +219,8 @@ func newRegistryClient(r RegistryRule) (*registryClient, error) {
 	if r.CAPEM != "" && !roots.AppendCertsFromPEM([]byte(r.CAPEM)) {
 		return nil, errors.New("invalid registry CA")
 	}
-	tr := &http.Transport{Proxy: nil, DialContext: c.dial, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 3 * time.Second, MaxResponseHeaderBytes: 32 * 1024, DisableCompression: true}
+	tr := &http.Transport{Proxy: nil, DialContext: c.dial, TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12, RootCAs: roots}, TLSHandshakeTimeout: 3 * time.Second, ResponseHeaderTimeout: 3 * time.Second, MaxResponseHeaderBytes: 32 * 1024, DisableCompression: true,
+		MaxIdleConns: 16, MaxIdleConnsPerHost: 8, MaxConnsPerHost: 8, IdleConnTimeout: 30 * time.Second}
 	c.client = &http.Client{Transport: tr, Timeout: 10 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return errRegistryRedirect }}
 	return c, nil
 }
@@ -391,7 +418,9 @@ type signaturePayload struct {
 }
 
 func (c *registryClient) signatures(ctx context.Context, id imageIdentity) ([]signaturePayload, error) {
-	defer c.client.Transport.(*http.Transport).CloseIdleConnections()
+	if !c.shared {
+		defer c.client.Transport.(*http.Transport).CloseIdleConnections()
+	}
 	manifest, err := c.fetch(ctx, "/v2/"+id.repository+"/manifests/"+id.digest, 1024*1024)
 	if err != nil {
 		return nil, fmt.Errorf("image manifest: %w", err)

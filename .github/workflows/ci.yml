@@ -47,6 +47,8 @@ jobs:
             mapfile -t packages < <(go list ./... | grep -vE '/(test/e2e|bench|test/cosign)')
             go test "${packages[@]}" -v -race -coverprofile=coverage.out
           } 2>&1 | tee unit-tests-output.txt
+      - name: Recompute retained resource measurements
+        run: python3 -B hack/check-resource-improvement-evidence.py
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -129,6 +131,11 @@ jobs:
           for target in FuzzRegistryJSONKeys FuzzBearerChallenge FuzzBoundedVerificationKey; do
             go test ./internal/webhook -run '^$' -fuzz "^${target}$" -fuzztime=10s -parallel=2 2>&1 | tee "${target}-output.txt"
           done
+      - name: Fuzz header framing compatibility
+        shell: bash
+        run: |
+          set -o pipefail
+          go test ./internal/artifact -run '^$' -fuzz '^FuzzHeaderFramingCompatibility$' -fuzztime=10s -parallel=2 2>&1 | tee FuzzHeaderFramingCompatibility-output.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:

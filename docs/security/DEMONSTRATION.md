@@ -76,3 +76,7 @@ Use a separately approved disposable cluster for install/upgrade/uninstall, TLS/
 | 8 repeated containers | Admission enabled | 12.085 | 15.133 | 18.891 | 19.599 | 77.2 |
 
 False allows: 0; false denies: 0 in this experiment. These are end-to-end API timings, not phase-specific webhook CPU or production throughput. Whole-command peak process-tree memory was 867,856,384 bytes, user CPU 7.703s and kernel CPU 9.265s, including compilation/setup and private control plane. The test uses request-local reuse, no cross-request trust cache. First observation follows correctness controls; **cold-launch, stress capacity, phase-specific resource and production SLO measurements remain unverified**. Historical load/soak evidence is retained separately, never relabeled as this candidate.
+
+## Resource improvement follow-up
+
+See [bounded connection/artifact memory changes](../RESOURCE_IMPROVEMENTS.md) for the 22 November local comparison, allocation fixtures, real API/crypto bypass controls and retained single-container tail regression. Historical measurements above remain version-specific.

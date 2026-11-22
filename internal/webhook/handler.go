@@ -53,17 +53,27 @@ func (FileArtifactFetcher) Fetch(ctx context.Context, ref string) ([]byte, error
 	if !info.Mode().IsRegular() || info.Size() > maxArtifactBytes {
 		return nil, fmt.Errorf("artifact must be a regular file no larger than 64 MiB")
 	}
-	data, err := io.ReadAll(io.LimitReader(f, maxArtifactBytes+1))
+	data, err := readArtifactSnapshot(f, info.Size())
 	if err != nil {
 		return nil, err
-	}
-	if len(data) > maxArtifactBytes {
-		return nil, fmt.Errorf("artifact exceeds 64 MiB")
 	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	return data, nil
+}
+
+func readArtifactSnapshot(r io.Reader, size int64) ([]byte, error) {
+	if size < 0 || size > maxArtifactBytes {
+		return nil, fmt.Errorf("artifact size exceeds bounds")
+	}
+	// Allocate once from the checked descriptor size, avoiding ReadAll growth.
+	data := make([]byte, int(size)+1)
+	n, err := io.ReadFull(r, data)
+	if (err != io.EOF && err != io.ErrUnexpectedEOF) || int64(n) != size {
+		return nil, fmt.Errorf("artifact size changed or read failed")
+	}
+	return data[:n], nil
 }
 
 // PolicyResolver looks up the enforcement policy for a pod's namespace.
@@ -82,21 +92,23 @@ const ModelArtifactAnnotation = "modelgate.dev/model-artifact"
 // runtime manager wiring so its rules can be exercised directly in unit
 // tests; cmd/webhook/main.go wires it into a real manager and server.
 type Handler struct {
-	Resolver PolicyResolver
-	Verifier ImageVerifier
-	Fetcher  ArtifactFetcher
-	Logger   *slog.Logger
-	slots    chan struct{}
+	Resolver      PolicyResolver
+	Verifier      ImageVerifier
+	Fetcher       ArtifactFetcher
+	Logger        *slog.Logger
+	slots         chan struct{}
+	artifactSlots chan struct{}
 }
 
 // NewHandler builds a Handler with production defaults (real cosign
-// verification via the CLI, filesystem artifact fetch) backed by resolver.
+// bounded signature verification and filesystem artifact fetch) backed by resolver.
 func NewHandler(resolver PolicyResolver) *Handler {
 	return &Handler{
-		Resolver: resolver,
-		slots:    make(chan struct{}, 8),
-		Verifier: CosignVerifier{},
-		Fetcher:  FileArtifactFetcher{},
+		Resolver:      resolver,
+		slots:         make(chan struct{}, 8),
+		artifactSlots: make(chan struct{}, 1),
+		Verifier:      CosignVerifier{},
+		Fetcher:       FileArtifactFetcher{},
 	}
 }
 
@@ -256,6 +268,16 @@ func (h *Handler) checkModelArtifact(ctx context.Context, cfg *policy.Config, re
 	expectedHash, ok := cfg.ArtifactHash(ref)
 	if !ok {
 		return fmt.Sprintf("model artifact %q is not on the allow-list", ref), true
+	}
+	// Eight individually legal 64 MiB reads already equal the pod memory limit,
+	// before parsing or any other work. Bound fetching AND validation together.
+	if h.artifactSlots != nil {
+		select {
+		case h.artifactSlots <- struct{}{}:
+			defer func() { <-h.artifactSlots }()
+		default:
+			return "artifact validation capacity exhausted; retry later", true
+		}
 	}
 	data, err := h.Fetcher.Fetch(ctx, ref)
 	if err != nil {

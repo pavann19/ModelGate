@@ -1,0 +1,692 @@
+{
+  "arch": "amd64",
+  "cache_semantics": "No cross-request trust cache; first observation is after correctness controls, not a cold process launch",
+  "concurrency": 1,
+  "false_allows": 0,
+  "false_denies": 0,
+  "first_observed_measured_request_ns": 14225900,
+  "go": "go1.27.4",
+  "kubernetes": "v1.31.0",
+  "os": "windows",
+  "real_api_crypto_bypass_controls": 7,
+  "resource_scope": "See isolated runner receipt for whole-command CPU/peak process-tree memory; includes compilation/setup; no per-phase CPU or production capacity claim",
+  "samples": [
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 14213300
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3403800
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3352300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 14946400
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 18325000
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3379600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 2867100
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 17717500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15796000
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3570100
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 4787000
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 13677000
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 17261500
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3453200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3437700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 19045200
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15679200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 4070900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3685600
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 16979800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 21121200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 5721400
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3596500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 14864100
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 14075000
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3337300
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 2823200
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 18810600
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 14772400
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3493600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 2786800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15539900
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 25816900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 4012800
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3464300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 20853900
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 17403800
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3367600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3443200
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 20642500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 17537700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 8157100
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 2827100
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15898100
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 24525600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3803600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3497500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15115000
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 51096400
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3923800
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3007300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 22484900
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15113300
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 2931900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 4589600
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 16818300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 21180700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3888900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 4148800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 19808600
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 15847200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 2870700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 1,
+      "nanoseconds": 3340500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 1,
+      "nanoseconds": 17291000
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 17087600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3933300
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3361200
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 19755400
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 15183900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3471200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 10184700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 19699800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 18496100
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3896100
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3920700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 16856500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 15084400
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3458500
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3925800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 15140000
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 21153900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3166700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3922300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 17596900
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 18180700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4677000
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4489800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 16363900
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 23395600
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 6287700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 14866700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 29746300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 24693200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3956200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3941200
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 32611300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 18879100
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 5288200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3881400
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 18419300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 17532400
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4544300
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3924900
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 15276700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 26086700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4534500
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3502700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 15501400
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 16754500
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4585000
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3412500
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 14953000
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 19311700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4017000
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4115400
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 16171800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 21665800
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4653200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4503700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 14767800
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 17165200
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4998400
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 4047700
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 21926400
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 16205900
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3561700
+    },
+    {
+      "mode": "api-baseline",
+      "containers": 8,
+      "nanoseconds": 3414300
+    },
+    {
+      "mode": "admission-enabled",
+      "containers": 8,
+      "nanoseconds": 19928000
+    }
+  ],
+  "schema_version": 1,
+  "scope": "Native API server dry-run + real namespace policy read + TLS registry + real bounded crypto; API baseline deliberately excludes fixture webhook through object selector, never use that selector in production",
+  "summary": {
+    "admission-enabled-1": {
+      "count": 32,
+      "p50_ms": 17.2615,
+      "p90_ms": 22.4849,
+      "p95_ms": 25.8169,
+      "p99_ms": 51.0964,
+      "successful_requests_per_active_second": 53.31040985709478
+    },
+    "admission-enabled-8": {
+      "count": 32,
+      "p50_ms": 17.5969,
+      "p90_ms": 24.6932,
+      "p95_ms": 29.7463,
+      "p99_ms": 32.6113,
+      "successful_requests_per_active_second": 52.3225317826679
+    },
+    "api-baseline-1": {
+      "count": 32,
+      "p50_ms": 3.4532,
+      "p90_ms": 4.5896,
+      "p95_ms": 5.7214,
+      "p99_ms": 8.1571,
+      "successful_requests_per_active_second": 268.81539774598286
+    },
+    "api-baseline-8": {
+      "count": 32,
+      "p50_ms": 3.9412,
+      "p90_ms": 5.2882,
+      "p95_ms": 10.1847,
+      "p99_ms": 14.8667,
+      "successful_requests_per_active_second": 215.5695076931368
+    }
+  },
+  "warmups_per_workload": 3
+}

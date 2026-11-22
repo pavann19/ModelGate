@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "go": "go1.27.4",
+    "os": "windows",
+    "kubernetes": "v1.31.0",
+    "concurrency": 1
+  },
+  "measurement_base_commit": "3cc8747152c37ff4b9091ef0f87ac4b7b97c7774",
+  "method": "Frozen HEAD product baseline plus common operator-loaded native harness; frozen candidate; Go 1.27.4; sequential ABBA; each native run alternates enabled/API-baseline order, 32 samples/cell and 3 warmups/workload; pool 64 samples/cell/implementation; no significance or production claim",
+  "admission": [
+    {
+      "containers": 1,
+      "baseline_admission-enabled": {
+        "count": 64,
+        "p50_ms": 17.291,
+        "p95_ms": 25.8169,
+        "p99_ms": 51.0964
+      },
+      "baseline_api-baseline": {
+        "count": 64,
+        "p50_ms": 3.5162,
+        "p95_ms": 7.0653,
+        "p99_ms": 8.9596
+      },
+      "candidate_admission-enabled": {
+        "count": 64,
+        "p50_ms": 9.0532,
+        "p95_ms": 35.3461,
+        "p99_ms": 87.8574
+      },
+      "candidate_api-baseline": {
+        "count": 64,
+        "p50_ms": 3.3907,
+        "p95_ms": 10.6026,
+        "p99_ms": 48.4092
+      },
+      "p95_reduction_percent": -36.91070577799813
+    },
+    {
+      "containers": 8,
+      "baseline_admission-enabled": {
+        "count": 64,
+        "p50_ms": 18.4193,
+        "p95_ms": 29.0811,
+        "p99_ms": 32.6113
+      },
+      "baseline_api-baseline": {
+        "count": 64,
+        "p50_ms": 4.1295,
+        "p95_ms": 9.7335,
+        "p99_ms": 17.4589
+      },
+      "candidate_admission-enabled": {
+        "count": 64,
+        "p50_ms": 9.8343,
+        "p95_ms": 15.5769,
+        "p99_ms": 28.857
+      },
+      "candidate_api-baseline": {
+        "count": 64,
+        "p50_ms": 3.8802,
+        "p95_ms": 7.5836,
+        "p99_ms": 10.1437
+      },
+      "p95_reduction_percent": 46.436345255165726
+    }
+  ],
+  "allocation": {
+    "BenchmarkHeaderFraming8MiB": {
+      "baseline": {
+        "repetitions": 3,
+        "iterations_each": 5,
+        "median_ns_per_op": 20338080.0,
+        "median_bytes_per_op": 8398452,
+        "median_allocs_per_op": 8
+      },
+      "candidate": {
+        "repetitions": 3,
+        "iterations_each": 5,
+        "median_ns_per_op": 14729180.0,
+        "median_bytes_per_op": 120,
+        "median_allocs_per_op": 0
+      },
+      "allocated_bytes_reduction_percent": 99.9985711652576
+    },
+    "BenchmarkFileArtifactFetcher64MiB": {
+      "baseline": {
+        "repetitions": 3,
+        "iterations_each": 5,
+        "median_ns_per_op": 46503060.0,
+        "median_bytes_per_op": 165348396,
+        "median_allocs_per_op": 46
+      },
+      "candidate": {
+        "repetitions": 3,
+        "iterations_each": 5,
+        "median_ns_per_op": 38759060.0,
+        "median_bytes_per_op": 67117948,
+        "median_allocs_per_op": 7
+      },
+      "allocated_bytes_reduction_percent": 59.4081650480601
+    }
+  },
+  "local_validation": {
+    "passing_test_events": 180,
+    "passing_packages": 10,
+    "skipped_tests": [
+      "TestLiveRegistryServer"
+    ],
+    "framing_compatibility_fuzz_executions": 45727,
+    "vet": "PASS",
+    "owned_processes_after_cleanup": 0
+  },
+  "source_sha256": {
+    "cmd/webhook/main.go": "09da6451c76aa9ce68a698cb5806927fe03a0e87f0b5aad3f148410271634662",
+    "internal/artifact/safetensors.go": "2d834e1596792f1283f503a1fe9a259e949a7071f1041d8361b2900cbe4c7366",
+    "internal/artifact/framing_regression_test.go": "8cac5bf57f84981770a91c4e13bc0de4b5366b8ee2b2492c7ac061b850df0acb",
+    "internal/webhook/handler.go": "a7b135901e56b096e7679cb1f28a543aeaa78e02c0c6a86800a7890e4c4611c2",
+    "internal/webhook/registry.go": "98bbf0b158be477b8f68d679452cfd67c52af82b4f30b7e750ab666eb5bef864",
+    "internal/webhook/registry_pool_test.go": "a7a9517f293d304ac384d0b0da730b2d3a1bfb73fa28f034087c9b5c484eca63",
+    "internal/webhook/resource_regression_test.go": "48baf5ecc5d469b39bba2e8b3d76edd4b2f32a3420d02a6ee68eb48ff6aebfbe",
+    "test/cosign/cosign_integration_test.go": "22d5f6337b93df03bacb29c10d18686b37e4eb0e997866cf37f111135dc2a7f3",
+    "test/cosign/native_admission_test.go": "1a08662efc4c4086f6c38add02ce79098f898d9b927cb51d3c5d72b37449f2ae",
+    "test/cosign/request_isolation_test.go": "bf0ac581dc5815d06377e18065280b5e7d9f297d3e3b09f6de8859e2a27910fe",
+    "test/cosign/loaded_policy_test.go": "b5b60997da00c120d924372960ea7fef805e8d0f5bde12a5524606dc2d6fdd95",
+    "test/cosign/native_bypass_controls_test.go": "4293cd79dc0a27cc8d67aea5c0935ad7d8761f8c40a5f88dbae120963f7de54f"
+  },
+  "input_sha256": {
+    "allocation-baseline.txt": "f102f8ac4a31d1fee80fddc08c3323dfb6d68d80fbfda0bfe19e617bc1c7b107",
+    "allocation-candidate.txt": "6d750557f4474864023afa100bdfb7ecf7971f105c029d39ba5820979fdb7ea0",
+    "final-abba-1-baseline.json": "ed583a210ab5f8d192b64744613f8201c72b85997e0c9e128636a63467de7753",
+    "final-abba-2-candidate.json": "9d9399cac44fbfd3212d3a067fae39b1cfe322ece89eaa4dc7adbbaff07c6adb",
+    "final-abba-3-candidate.json": "c49b1dceb3a376d294309e5b6dcecd8a7eb47e1560f9f2fadeff7e866082ff8d",
+    "final-abba-4-baseline.json": "b9a136eb7bb09ead1a5b62ceefbd2cd307b5464687351b5fbea713bef9aa0022"
+  },
+  "limitations": [
+    "One-container p95 regressed in the final local comparison; no universal latency improvement or causal attribution.",
+    "No full cluster install/CNI/image build/OS scan/managed deployment/host HA/soak/hosted CI execution.",
+    "Allocated bytes/op are not process RSS or a guaranteed pod memory ceiling. Artifact gate trades parallelism for bounded memory pressure.",
+    "Signature and optional local-file format checks do not establish provenance or bind model bytes to the running workload.",
+    "Original 24-hour acceptance and 15-hour stop instruction unchanged."
+  ],
+  "provenance": "Selected synthetic timing/benchmark data exported from preserved local runs. Local paths, process IDs, setup receipts, raw bulk logs and coordination packs remain private. Source hashes identify the measured production files/tests; hosted CI validates the publication commit separately. Sanitization removed only the CPU identity line from allocation logs; timing/allocation samples and negative results are unchanged."
+}

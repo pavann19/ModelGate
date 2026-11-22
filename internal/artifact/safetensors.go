@@ -4,6 +4,7 @@
 package artifact
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/hex"
@@ -65,11 +66,14 @@ func checkSafetensorsHeader(data []byte) error {
 		return fmt.Errorf("%w: declared header length exceeds file size", ErrNotSafetensors)
 	}
 	header := data[8 : 8+headerLen]
-	var parsed map[string]json.RawMessage
-	if err := json.Unmarshal(header, &parsed); err != nil {
-		return fmt.Errorf("%w: header is not valid JSON: %v", ErrNotSafetensors, err)
+	// This contract checks framing, not tensor schema. Materializing every
+	// RawMessage copies the entire header and can allocate an attacker-sized
+	// map unnecessarily. Validate syntax and object framing without that copy.
+	if !json.Valid(header) {
+		return fmt.Errorf("%w: header is not valid JSON", ErrNotSafetensors)
 	}
-	if parsed == nil {
+	trimmed := bytes.TrimSpace(header)
+	if len(trimmed) == 0 || trimmed[0] != '{' {
 		return fmt.Errorf("%w: header must be an object", ErrNotSafetensors)
 	}
 	return nil
