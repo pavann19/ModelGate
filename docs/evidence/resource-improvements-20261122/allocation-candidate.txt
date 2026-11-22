@@ -1,0 +1,16 @@
+goos: windows
+goarch: amd64
+pkg: github.com/pavann19/modelgate/internal/artifact
+BenchmarkHeaderFraming8MiB-2   	       5	  13262100 ns/op	 632.53 MB/s	     120 B/op	       0 allocs/op
+BenchmarkHeaderFraming8MiB-2   	       5	  14860580 ns/op	 564.49 MB/s	     120 B/op	       0 allocs/op
+BenchmarkHeaderFraming8MiB-2   	       5	  14729180 ns/op	 569.53 MB/s	     120 B/op	       0 allocs/op
+PASS
+ok  	github.com/pavann19/modelgate/internal/artifact	2.554s
+goos: windows
+goarch: amd64
+pkg: github.com/pavann19/modelgate/internal/webhook
+BenchmarkFileArtifactFetcher64MiB-2   	       5	  36674940 ns/op	1829.83 MB/s	67118968 B/op	       8 allocs/op
+BenchmarkFileArtifactFetcher64MiB-2   	       5	  38759060 ns/op	1731.44 MB/s	67117948 B/op	       7 allocs/op
+BenchmarkFileArtifactFetcher64MiB-2   	       5	  40927620 ns/op	1639.70 MB/s	67117939 B/op	       7 allocs/op
+PASS
+ok  	github.com/pavann19/modelgate/internal/webhook	1.808s

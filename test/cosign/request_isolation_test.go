@@ -27,6 +27,8 @@ func (r namespaceKeys) Resolve(_ context.Context, ns string) (policy.Resolution,
 func TestRepeatedImagesRespectRealSignaturesAndPolicyChanges(t *testing.T) {
 	requireTool(t, "cosign")
 	f := newTLSRegistry(t)
+	f.policy = loadFixturePolicy(t, f.policy)
+	t.Cleanup(f.policy.CloseIdleConnections)
 	keys := namespaceKeys{"tenant-a": f.publicKey, "tenant-b": f.otherPublicKey}
 	h := webhook.NewHandler(keys)
 	h.Verifier = webhook.CosignVerifier{RegistryPolicy: f.policy}

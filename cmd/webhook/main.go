@@ -51,6 +51,7 @@ func main() {
 	if err != nil {
 		exitf("registry destination policy is invalid: %v", err)
 	}
+	defer registryPolicy.CloseIdleConnections()
 
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {

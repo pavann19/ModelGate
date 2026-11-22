@@ -31,6 +31,8 @@ func TestCosignVerifier_RealSignedAndUnsignedImages(t *testing.T) {
 		t.Fatalf("expected pinned cosign v3.1.4: %s", version)
 	}
 	fixture := newTLSRegistry(t)
+	fixture.policy = loadFixturePolicy(t, fixture.policy)
+	t.Cleanup(fixture.policy.CloseIdleConnections)
 	t.Setenv("HTTPS_PROXY", "http://127.0.0.1:1")
 	t.Setenv("NO_PROXY", "*")
 	t.Setenv("COSIGN_REPOSITORY", "untrusted.example/override")

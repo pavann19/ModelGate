@@ -40,6 +40,8 @@ func TestNativeAdmissionTrustAndOverhead(t *testing.T) {
 		t.Skip("explicit isolated native API profile required")
 	}
 	fixture := newTLSRegistry(t)
+	fixture.policy = loadFixturePolicy(t, fixture.policy)
+	t.Cleanup(fixture.policy.CloseIdleConnections)
 	environment := &envtest.Environment{CRDDirectoryPaths: []string{filepath.Join("..", "..", "deploy", "crd")}, ErrorIfCRDPathMissing: true}
 	config, err := environment.Start()
 	if err != nil {
@@ -87,7 +89,10 @@ func TestNativeAdmissionTrustAndOverhead(t *testing.T) {
 		AdmissionReviewVersions: []string{"v1"}, ClientConfig: registrationv1.WebhookClientConfig{URL: &url, CABundle: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})},
 		NamespaceSelector: &metav1.LabelSelector{MatchLabels: map[string]string{"modelgate.dev/native": "fixture"}},
 		ObjectSelector:    &metav1.LabelSelector{MatchLabels: map[string]string{"modelgate.dev/enforce": "fixture"}},
-		Rules:             []registrationv1.RuleWithOperations{{Operations: []registrationv1.OperationType{registrationv1.Create}, Rule: registrationv1.Rule{APIGroups: []string{""}, APIVersions: []string{"v1"}, Resources: []string{"pods"}}}},
+		Rules: []registrationv1.RuleWithOperations{
+			{Operations: []registrationv1.OperationType{registrationv1.Create, registrationv1.Update}, Rule: registrationv1.Rule{APIGroups: []string{""}, APIVersions: []string{"v1"}, Resources: []string{"pods"}}},
+			{Operations: []registrationv1.OperationType{registrationv1.Update}, Rule: registrationv1.Rule{APIGroups: []string{""}, APIVersions: []string{"v1"}, Resources: []string{"pods/ephemeralcontainers"}}},
+		},
 	}}}
 	if err := api.Create(ctx, hook); err != nil {
 		t.Fatal(err)
@@ -192,6 +197,8 @@ func TestNativeAdmissionTrustAndOverhead(t *testing.T) {
 			}
 		}
 	}
+	// Additional correctness work follows timings so it cannot warm their path.
+	bypassControls := nativeBypassControls(t, ctx, api, fixture, &called)
 	quantiles := map[string]any{}
 	for _, containers := range []int{1, 8} {
 		for _, mode := range []string{"api-baseline", "admission-enabled"} {
@@ -221,6 +228,7 @@ func TestNativeAdmissionTrustAndOverhead(t *testing.T) {
 	}
 	report := map[string]any{"schema_version": 1, "go": runtime.Version(), "os": runtime.GOOS, "arch": runtime.GOARCH, "kubernetes": info.GitVersion, "concurrency": 1, "warmups_per_workload": 3, "samples": samples, "summary": quantiles, "false_allows": falseAllows, "false_denies": falseDenies, "first_observed_measured_request_ns": firstLatency, "cache_semantics": "No cross-request trust cache; first observation is after correctness controls, not a cold process launch", "scope": "Native API server dry-run + real namespace policy read + TLS registry + real bounded crypto; API baseline deliberately excludes fixture webhook through object selector, never use that selector in production", "resource_scope": "See isolated runner receipt for whole-command CPU/peak process-tree memory; includes compilation/setup; no per-phase CPU or production capacity claim"}
 	if directory := os.Getenv("MODELGATE_EVIDENCE_DIR"); directory != "" {
+		report["real_api_crypto_bypass_controls"] = bypassControls
 		data, _ := json.MarshalIndent(report, "", "  ")
 		file, err := os.OpenFile(filepath.Join(directory, "admission-performance.json"), os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
