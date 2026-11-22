@@ -1,0 +1,4598 @@
+{
+  "schema": 1,
+  "baselineCommit": "76c44afaa07f2e069283de5116e4c894ed26cf4f",
+  "requestsPerPhase": 50,
+  "passed": true,
+  "limitations": [
+    "local shared Docker engine; minimal OCI fixture; no kubelet execution",
+    "same-image multi-container Pods; no production capacity claim"
+  ],
+  "sourceSHA256": {
+    "internal/webhook/handler.go": "d28bb989c7b924c0d71107d1000d33949ff92aa3e86ce7a23b2f5c8cee0f208d",
+    "internal/webhook/artifact_open_linux.go": "f614c2603486cd6c76ff2587b9c0cd0633f01eb2a9639a56bec682836256d291",
+    "cmd/admission-eval/main.go": "e8e4a1932179e84e9da9dae5125a121e58d87b2ec3dadaab3f9708d3485ef11a",
+    "deploy/kind/repeated-image-eval.py": "508508ce9c9f6b559b9525575eaf69c7da804eae28b854845051f1652ff04dfd",
+    "Dockerfile": "3fad09abafc6e83b1a3cd15dbd85dae42909c4615a92a7fbd19f715cd9d4ef07",
+    "go.mod": "27a7082e6535b8f61637168fd5f4a27a08a1b30dc796972ee4d1510141553e80",
+    "go.sum": "dfe72e1c7ecbf604e89b3ed1c511da85972983bf328261eccbbc023d040ba930"
+  },
+  "docker": {
+    "version": "29.9.2",
+    "cpus": 4,
+    "memoryBytes": 4111339520
+  },
+  "imageIDs": {
+    "baseline": "sha256:4363bca9df0e48ef893bae62f0387c25144f90c70182544c8b869ff4f2361c26",
+    "candidate": "sha256:21c6dbcf5a069934b656c3482b814b5dc04481edccc75ebd86a04b820772a337"
+  },
+  "resources": {
+    "limits": {
+      "cpu": "1",
+      "memory": "512Mi"
+    },
+    "requests": {
+      "cpu": "100m",
+      "memory": "128Mi"
+    }
+  },
+  "finishedUTC": "2026-10-26T10:43:27Z",
+  "pooledResults": [
+    {
+      "containers": 1,
+      "workers": 1,
+      "baseline": {
+        "p50Milliseconds": 102.777,
+        "p95Milliseconds": 135.491,
+        "p99Milliseconds": 162.258,
+        "allowedRequestsPerSecond": 9.342547551651815
+      },
+      "candidate": {
+        "p50Milliseconds": 104.823,
+        "p95Milliseconds": 130.895,
+        "p99Milliseconds": 146.786,
+        "allowedRequestsPerSecond": 9.328956933056897
+      },
+      "p95ReductionPercent": 3.392107224834129
+    },
+    {
+      "containers": 8,
+      "workers": 1,
+      "baseline": {
+        "p50Milliseconds": 821.223,
+        "p95Milliseconds": 934.597,
+        "p99Milliseconds": 1081.006,
+        "allowedRequestsPerSecond": 1.1921542497673883
+      },
+      "candidate": {
+        "p50Milliseconds": 109.439,
+        "p95Milliseconds": 145.998,
+        "p99Milliseconds": 158.989,
+        "allowedRequestsPerSecond": 8.796880246239455
+      },
+      "p95ReductionPercent": 84.37850752784355
+    },
+    {
+      "containers": 1,
+      "workers": 4,
+      "baseline": {
+        "p50Milliseconds": 497.666,
+        "p95Milliseconds": 700.842,
+        "p99Milliseconds": 794.492,
+        "allowedRequestsPerSecond": 7.982210398901226
+      },
+      "candidate": {
+        "p50Milliseconds": 490.307,
+        "p95Milliseconds": 610.861,
+        "p99Milliseconds": 699.915,
+        "allowedRequestsPerSecond": 8.160723890157668
+      },
+      "p95ReductionPercent": 12.8389851064862
+    },
+    {
+      "containers": 8,
+      "workers": 4,
+      "baseline": {
+        "p50Milliseconds": 3697.641,
+        "p95Milliseconds": 4203.222,
+        "p99Milliseconds": 4397.285,
+        "allowedRequestsPerSecond": 1.0754521910540773
+      },
+      "candidate": {
+        "p50Milliseconds": 424.359,
+        "p95Milliseconds": 600.792,
+        "p99Milliseconds": 607.241,
+        "allowedRequestsPerSecond": 8.749418338668844
+      },
+      "p95ReductionPercent": 85.70639380932057
+    }
+  ],
+  "record_kind": "historical local kind comparison; sanitized export; not a current-candidate benchmark",
+  "original_combined_record_sha256": "8649ebc638fc53b25ad94300b4d81144e738911dbce64e5197baa1a7d8235a6c",
+  "sanitization": "Only comparison selected from combined record; cluster/container names, namespace, registry address and tag aliases omitted. All 800 measured timing/outcome samples, phase order, warmups, quantiles, source hashes and content-addressed image identities retained. No new experiment performed.",
+  "blocks": [
+    {
+      "implementation": "baseline",
+      "runningImages": [
+        "docker.io/library/import-2026-10-26@sha256:4363bca9df0e48ef893bae62f0387c25144f90c70182544c8b869ff4f2361c26"
+      ],
+      "exclusiveReadyImageVerified": true,
+      "phases": [
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:38:48.2038274Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 5.1535089,
+          "completedRequestsPerSecond": 9.70212741846628,
+          "allowedRequestsPerSecond": 9.70212741846628,
+          "p50Milliseconds": 101.26,
+          "p95Milliseconds": 124.558,
+          "p99Milliseconds": 162.258,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 101.26,
+              "p95": 124.558,
+              "p99": 162.258
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 126.563,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 106.83,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 101.025,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 111.499,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 103.085,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 103.754,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 94.458,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 102.69,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 89.166,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 124.558,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 98.271,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 101.26,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 97.435,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 95.158,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 116.563,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 102.016,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 92.261,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 93.918,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 105.175,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 101.541,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 100.674,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 96.31,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 97.61,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 98.046,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 92.479,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 109.777,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 92.691,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 92.367,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 98.595,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 102.777,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 109.649,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 108.142,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 99.866,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 104.57,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 110.261,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 92.047,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 101.078,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 106.888,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 162.258,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 105.423,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 101.491,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 115.957,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 97.593,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 106.501,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 91.588,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 96.35,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 86.387,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 105.769,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 96.326,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 106.791,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:38:55.9551321Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 41.2874279,
+          "completedRequestsPerSecond": 1.211022399387587,
+          "allowedRequestsPerSecond": 1.211022399387587,
+          "p50Milliseconds": 807.682,
+          "p95Milliseconds": 937.284,
+          "p99Milliseconds": 1054.27,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 807.682,
+              "p95": 937.284,
+              "p99": 1054.27
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 832.933,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 768.537,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 795.631,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 778.799,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 770.823,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 782.982,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 793.874,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 1004.11,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 767.067,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 813.107,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 867.846,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 800.25,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 809.014,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 760.19,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 837.804,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 930.437,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 1054.27,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 937.284,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 886.87,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 874.267,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 781.21,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 869.54,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 861.402,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 802.191,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 819.572,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 832.615,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 798.904,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 844.997,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 756.186,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 777.398,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 854.414,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 770.068,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 786.034,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 792.217,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 799.402,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 785.67,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 813.11,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 810.991,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 811.513,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 807.682,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 850.879,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 839.338,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 864.401,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 793.934,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 806.927,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 807.366,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 799.366,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 875.668,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 817.334,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 789.445,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:39:37.6572077Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 6.4872523,
+          "completedRequestsPerSecond": 7.707423372449997,
+          "allowedRequestsPerSecond": 7.707423372449997,
+          "p50Milliseconds": 499.475,
+          "p95Milliseconds": 776.997,
+          "p99Milliseconds": 800.635,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 499.475,
+              "p95": 776.997,
+              "p99": 800.635
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 373.067,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 468.394,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 367.971,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 373.634,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 314.369,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 504.936,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 307.041,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 497.666,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 491.143,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 504.017,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 497.348,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 302.906,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 393.561,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 391.001,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 511.67,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 408.801,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 498.078,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 591.375,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 422.001,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 409.251,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 501.308,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 492.672,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 499.475,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 503.296,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 317.182,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 332.08,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 396.321,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 661.877,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 580.569,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 468.45,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 492.537,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 504.498,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 800.635,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 603.477,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 580.168,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 507.118,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 494.982,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 518.28,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 525.626,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 732.049,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 727.309,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 583.847,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 700.842,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 663.614,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 629.393,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 776.997,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 794.492,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 508.443,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 578.917,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 421.966,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:39:47.5857468Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 46.2396935,
+          "completedRequestsPerSecond": 1.0813220463928896,
+          "allowedRequestsPerSecond": 1.0813220463928896,
+          "p50Milliseconds": 3668.382,
+          "p95Milliseconds": 4219.282,
+          "p99Milliseconds": 4402.518,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 3668.382,
+              "p95": 4219.282,
+              "p99": 4402.518
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 4068.292,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 4336.641,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 4036.091,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 3854.538,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 4103.549,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 3723.868,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 3886.615,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 3625.927,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 3778.23,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 3607.401,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 3691.514,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 3596.019,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 4095.482,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 4402.518,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 4100.675,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 4181.685,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 3823.468,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 3688.974,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 3625.853,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 3482.896,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 3793.884,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 4219.282,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 3704.271,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 3873.725,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 3716.112,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 3668.382,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 3612.971,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 3574.139,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 3601.13,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 3472.546,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 3693.458,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 3317.246,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 3616.624,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 3306.242,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 2992.101,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 3306.394,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 3593.371,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 3716.378,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 3407.08,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 3697.641,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 3814.935,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 3396.253,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 3586.375,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 3989.057,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 3502.932,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 3373.29,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 3489.786,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 3520.471,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 1989.736,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 1908.527,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        }
+      ]
+    },
+    {
+      "implementation": "candidate",
+      "runningImages": [
+        "docker.io/library/import-2026-10-26@sha256:21c6dbcf5a069934b656c3482b814b5dc04481edccc75ebd86a04b820772a337"
+      ],
+      "exclusiveReadyImageVerified": true,
+      "phases": [
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:40:41.6284189Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 5.3097586,
+          "completedRequestsPerSecond": 9.416623949721556,
+          "allowedRequestsPerSecond": 9.416623949721556,
+          "p50Milliseconds": 104.683,
+          "p95Milliseconds": 145.138,
+          "p99Milliseconds": 149.305,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 104.683,
+              "p95": 145.138,
+              "p99": 149.305
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 111.901,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 97.158,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 101.755,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 99.885,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 108.015,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 106.952,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 104.683,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 97.855,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 108.48,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 102.607,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 95.325,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 110.776,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 105.928,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 105.326,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 95.335,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 104.942,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 149.305,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 104.907,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 107.362,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 104.846,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 100.914,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 104.823,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 101.349,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 92.564,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 118.753,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 90.929,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 98.783,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 102.409,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 102.097,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 112.513,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 146.786,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 107.697,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 99.523,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 110.014,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 101.455,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 108.696,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 99.704,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 103.318,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 95.796,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 120.046,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 101.274,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 96.307,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 145.138,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 106.321,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 107.606,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 104.758,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 92.819,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 108.779,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 103.009,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 102.216,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:40:47.4221582Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 5.7367299,
+          "completedRequestsPerSecond": 8.715766799479264,
+          "allowedRequestsPerSecond": 8.715766799479264,
+          "p50Milliseconds": 110.349,
+          "p95Milliseconds": 146.809,
+          "p99Milliseconds": 188.935,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 110.349,
+              "p95": 146.809,
+              "p99": 188.935
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 98.803,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 94.812,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 110.349,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 118.264,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 105.151,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 113.204,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 104.025,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 101.057,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 123.731,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 139.572,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 99.749,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 158.989,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 129.913,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 112.054,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 188.935,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 104.431,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 116.524,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 113.739,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 113.639,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 146.809,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 115.624,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 122.39,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 121.645,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 109.439,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 136.147,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 107.686,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 107.349,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 116.36,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 110.786,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 98.86,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 121.161,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 107.933,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 107.92,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 125.959,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 121.655,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 110.29,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 120.566,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 95.179,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 115.23,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 100.243,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 129.602,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 102.42,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 99.623,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 107.464,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 100.752,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 107.291,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 106.071,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 98.174,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 110.628,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 108.509,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:40:53.58501Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 6.2563548,
+          "completedRequestsPerSecond": 7.99187411813665,
+          "allowedRequestsPerSecond": 7.99187411813665,
+          "p50Milliseconds": 496.176,
+          "p95Milliseconds": 691.252,
+          "p99Milliseconds": 707.908,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 496.176,
+              "p95": 691.252,
+              "p99": 707.908
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 425.448,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 424.77,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 527.671,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 436.747,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 522.653,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 420.673,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 510.091,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 511.26,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 400.035,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 707.908,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 699.915,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 499.684,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 691.252,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 418.196,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 505.703,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 498.295,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 399.09,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 483.929,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 578.828,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 588.047,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 420.23,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 499.853,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 520.825,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 489.755,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 571.744,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 496.176,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 517.288,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 477.342,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 512.196,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 418.557,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 505.424,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 681.401,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 595.372,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 583.299,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 397.022,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 407.657,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 313.814,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 491.583,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 509.181,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 505.615,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 411.284,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 503.957,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 431.528,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 493.08,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 485.578,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 413.177,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 461.664,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 502.579,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 488.279,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 409.007,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:00.2677401Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 5.8633934,
+          "completedRequestsPerSecond": 8.527485124910774,
+          "allowedRequestsPerSecond": 8.527485124910774,
+          "p50Milliseconds": 449.874,
+          "p95Milliseconds": 603.132,
+          "p99Milliseconds": 679.674,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 449.874,
+              "p95": 603.132,
+              "p99": 679.674
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 469.852,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 450.975,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 449.874,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 344.93,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 497.326,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 519.46,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 406.474,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 472.385,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 413.521,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 416.011,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 424.359,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 391.394,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 393.139,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 405.669,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 603.132,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 478.013,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 397.439,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 575.208,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 506.688,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 400.865,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 420.699,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 399.058,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 502.696,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 382.444,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 499.765,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 413.516,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 404.379,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 502.989,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 504.042,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 485.225,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 491.126,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 510.424,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 505.811,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 404.007,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 507.529,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 488.449,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 417.397,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 466.719,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 398.418,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 489.789,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 391.373,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 422.641,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 407.116,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 401.55,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 600.792,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 679.674,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 605.763,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 595.282,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 402.201,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 316.658,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        }
+      ]
+    },
+    {
+      "implementation": "candidate",
+      "runningImages": [
+        "docker.io/library/import-2026-10-26@sha256:21c6dbcf5a069934b656c3482b814b5dc04481edccc75ebd86a04b820772a337"
+      ],
+      "exclusiveReadyImageVerified": true,
+      "phases": [
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:07.7225929Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 5.4095534,
+          "completedRequestsPerSecond": 9.24290718712565,
+          "allowedRequestsPerSecond": 9.24290718712565,
+          "p50Milliseconds": 105.512,
+          "p95Milliseconds": 130.895,
+          "p99Milliseconds": 132.637,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 105.512,
+              "p95": 130.895,
+              "p99": 132.637
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 98.384,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 107.867,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 100.356,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 109.097,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 115.796,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 99.413,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 100.261,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 104.719,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 100.676,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 102.245,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 96.832,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 99.659,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 101.591,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 98.445,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 100.859,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 96.082,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 104.068,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 98.998,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 111.076,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 96.204,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 116.127,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 104.096,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 101.409,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 130.316,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 113.388,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 108.925,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 105.272,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 99.398,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 102.643,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 117.017,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 104.355,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 100.681,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 107.18,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 132.637,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 118.851,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 119.347,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 114.005,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 113.485,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 107.618,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 103.429,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 131.508,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 105.512,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 106.634,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 116.484,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 109.443,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 114.692,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 112.877,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 108.632,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 130.895,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 108.882,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:13.6307279Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 5.6309365,
+          "completedRequestsPerSecond": 8.879517643290775,
+          "allowedRequestsPerSecond": 8.879517643290775,
+          "p50Milliseconds": 107.548,
+          "p95Milliseconds": 145.998,
+          "p99Milliseconds": 153.315,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 107.548,
+              "p95": 145.998,
+              "p99": 153.315
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 104.949,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 101.601,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 105.016,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 112.056,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 104.771,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 127.383,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 130.458,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 99.885,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 107.548,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 126.753,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 114.104,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 101.961,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 107.078,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 145.998,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 94.998,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 109.436,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 102.239,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 99.265,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 114.397,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 107.415,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 97.665,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 108.989,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 121.791,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 100.528,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 103.178,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 110.543,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 124.771,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 148.51,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 153.315,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 124.479,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 124.438,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 120.98,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 100.324,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 102.135,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 126.664,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 121.968,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 112.075,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 105.387,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 116.551,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 97.568,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 104.326,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 101.178,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 98.941,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 133.742,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 90.919,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 126.415,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 93.75,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 123.77,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 101.04,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 117.664,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:19.7181656Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 5.9974601,
+          "completedRequestsPerSecond": 8.336862466162968,
+          "allowedRequestsPerSecond": 8.336862466162968,
+          "p50Milliseconds": 487.115,
+          "p95Milliseconds": 599.769,
+          "p99Milliseconds": 662.158,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 487.115,
+              "p95": 599.769,
+              "p99": 662.158
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 417.812,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 320.917,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 410.688,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 406.109,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 471.394,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 590.43,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 496.034,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 500.075,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 321.369,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 582.433,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 381.768,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 509.18,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 425.633,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 528.743,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 535.094,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 610.861,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 577.266,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 662.158,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 467.692,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 399.383,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 489.248,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 416.129,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 526.08,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 492.293,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 516.88,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 420.919,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 489.235,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 490.895,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 576.689,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 376.821,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 415.984,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 315.836,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 590.049,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 409.496,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 487.115,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 398.963,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 495.551,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 501.404,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 592.579,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 590.882,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 486.844,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 409.478,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 411.167,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 490.307,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 502.084,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 599.769,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 402.823,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 331.598,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 388.993,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 280.144,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:26.2197485Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 5.5659378,
+          "completedRequestsPerSecond": 8.983212137225104,
+          "allowedRequestsPerSecond": 8.983212137225104,
+          "p50Milliseconds": 416.562,
+          "p95Milliseconds": 516.738,
+          "p99Milliseconds": 607.241,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 416.562,
+              "p95": 516.738,
+              "p99": 607.241
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 415.047,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 313.952,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 409.694,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 310.828,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 477.922,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 381.967,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 399.448,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 602.344,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 501.165,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 516.738,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 505.502,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 389.415,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 409.328,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 390.391,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 407.985,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 507.401,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 410.608,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 503.055,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 466.451,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 474.879,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 393.573,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 426.28,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 497.057,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 409.284,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 607.241,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 396.638,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 410.122,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 406.447,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 478.579,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 488.152,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 481.635,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 316.073,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 498.212,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 395.148,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 491.63,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 416.562,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 402.792,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 418.314,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 392.303,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 485.662,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 303.348,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 500.158,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 494.846,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 407.227,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 396.594,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 491.187,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 498.62,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 513.151,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 426.955,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 177.975,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        }
+      ]
+    },
+    {
+      "implementation": "baseline",
+      "runningImages": [
+        "docker.io/library/import-2026-10-26@sha256:4363bca9df0e48ef893bae62f0387c25144f90c70182544c8b869ff4f2361c26"
+      ],
+      "exclusiveReadyImageVerified": true,
+      "phases": [
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:36.8640239Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 5.5502097,
+          "completedRequestsPerSecond": 9.008668627421411,
+          "allowedRequestsPerSecond": 9.008668627421411,
+          "p50Milliseconds": 105.638,
+          "p95Milliseconds": 137.289,
+          "p99Milliseconds": 169.296,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 105.638,
+              "p95": 137.289,
+              "p99": 169.296
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 120.971,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 137.91,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 113.485,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 113.72,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 102.528,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 102.258,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 115.912,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 102.754,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 102.476,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 136.585,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 100.756,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 108.928,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 105.616,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 101.315,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 108.78,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 100.584,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 100.338,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 107.079,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 112.522,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 112.198,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 108.227,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 100.598,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 108.771,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 132.575,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 110.739,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 102.424,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 105.638,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 130.076,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 119.966,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 169.296,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 91.493,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 98.534,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 104.728,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 125.696,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 135.491,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 103.262,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 99.797,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 104.122,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 109.353,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 94.631,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 112.093,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 98.249,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 101.834,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 133.173,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 96.427,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 110.641,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 96.852,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 137.289,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 97.324,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 102.492,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:41:45.0162322Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 1,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 42.5943349,
+          "completedRequestsPerSecond": 1.1738650249472495,
+          "allowedRequestsPerSecond": 1.1738650249472495,
+          "p50Milliseconds": 833.662,
+          "p95Milliseconds": 934.597,
+          "p99Milliseconds": 1141.167,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 833.662,
+              "p95": 934.597,
+              "p99": 1141.167
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 857.128,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 852.49,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 887.816,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 837.685,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 804.01,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 831.68,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 824.843,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 842.125,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 820.475,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 860.85,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 808.203,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 808.788,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 794.929,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 860.189,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 820.265,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 804.154,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 799.476,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 1081.006,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 866.774,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 1141.167,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 897.364,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 908.723,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 934.597,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 868.341,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 812.282,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 838.221,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 858,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 817.449,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 803.065,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 812.266,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 869.799,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 812.005,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 821.677,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 845.925,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 798.3,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 821.92,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 796.008,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 889.38,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 827.825,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 898.95,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 914.038,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 849.079,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 819.417,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 830.111,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 837.01,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 855.497,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 895.152,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 821.223,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 833.662,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 802.345,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:42:27.9918947Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 1,
+          "warmup": 3,
+          "seconds": 6.0406059,
+          "completedRequestsPerSecond": 8.27731536003698,
+          "allowedRequestsPerSecond": 8.27731536003698,
+          "p50Milliseconds": 490.082,
+          "p95Milliseconds": 600.636,
+          "p99Milliseconds": 688.931,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 490.082,
+              "p95": 600.636,
+              "p99": 688.931
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 337.314,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 337.314,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 432.517,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 524.177,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 402.269,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 504.775,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 383.777,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 507.48,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 583.208,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 394.805,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 688.931,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 401.611,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 517.971,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 495.996,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 498.014,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 584.621,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 582.868,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 412.435,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 416.225,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 510.767,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 503.325,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 512.489,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 394.164,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 401.416,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 488.359,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 499.255,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 490.082,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 410.001,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 590.858,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 487.565,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 501.01,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 593.399,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 388.157,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 420.208,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 503.787,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 496.678,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 600.636,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 501.555,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 397.979,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 382.212,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 499.634,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 522.01,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 481.392,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 521.195,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 611.669,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 425.583,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 484.119,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 484.252,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 383.173,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 317.187,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        },
+        {
+          "schema": 1,
+          "startedUTC": "2026-10-26T10:42:36.6619858Z",
+          "goVersion": "go1.27.3",
+          "expected": "allowed",
+          "concurrency": 4,
+          "containersPerPod": 8,
+          "warmup": 3,
+          "seconds": 46.7444492,
+          "completedRequestsPerSecond": 1.0696457195606446,
+          "allowedRequestsPerSecond": 1.0696457195606446,
+          "p50Milliseconds": 3713.231,
+          "p95Milliseconds": 4203.222,
+          "p99Milliseconds": 4397.285,
+          "outcomes": {
+            "allowed": 50
+          },
+          "latencyMillisecondsByOutcome": {
+            "allowed": {
+              "p50": 3713.231,
+              "p95": 4203.222,
+              "p99": 4397.285
+            }
+          },
+          "samples": [
+            {
+              "index": 0,
+              "milliseconds": 3651.524,
+              "outcome": "allowed"
+            },
+            {
+              "index": 1,
+              "milliseconds": 3469.763,
+              "outcome": "allowed"
+            },
+            {
+              "index": 2,
+              "milliseconds": 3554.723,
+              "outcome": "allowed"
+            },
+            {
+              "index": 3,
+              "milliseconds": 3848.646,
+              "outcome": "allowed"
+            },
+            {
+              "index": 4,
+              "milliseconds": 4271.289,
+              "outcome": "allowed"
+            },
+            {
+              "index": 5,
+              "milliseconds": 4397.285,
+              "outcome": "allowed"
+            },
+            {
+              "index": 6,
+              "milliseconds": 4092.425,
+              "outcome": "allowed"
+            },
+            {
+              "index": 7,
+              "milliseconds": 4193.717,
+              "outcome": "allowed"
+            },
+            {
+              "index": 8,
+              "milliseconds": 3529.748,
+              "outcome": "allowed"
+            },
+            {
+              "index": 9,
+              "milliseconds": 4005.385,
+              "outcome": "allowed"
+            },
+            {
+              "index": 10,
+              "milliseconds": 3984.705,
+              "outcome": "allowed"
+            },
+            {
+              "index": 11,
+              "milliseconds": 3621.693,
+              "outcome": "allowed"
+            },
+            {
+              "index": 12,
+              "milliseconds": 3687.808,
+              "outcome": "allowed"
+            },
+            {
+              "index": 13,
+              "milliseconds": 3887.82,
+              "outcome": "allowed"
+            },
+            {
+              "index": 14,
+              "milliseconds": 3809.483,
+              "outcome": "allowed"
+            },
+            {
+              "index": 15,
+              "milliseconds": 3521.43,
+              "outcome": "allowed"
+            },
+            {
+              "index": 16,
+              "milliseconds": 3788.191,
+              "outcome": "allowed"
+            },
+            {
+              "index": 17,
+              "milliseconds": 3990.536,
+              "outcome": "allowed"
+            },
+            {
+              "index": 18,
+              "milliseconds": 3911.483,
+              "outcome": "allowed"
+            },
+            {
+              "index": 19,
+              "milliseconds": 3985.368,
+              "outcome": "allowed"
+            },
+            {
+              "index": 20,
+              "milliseconds": 3908.658,
+              "outcome": "allowed"
+            },
+            {
+              "index": 21,
+              "milliseconds": 4013.042,
+              "outcome": "allowed"
+            },
+            {
+              "index": 22,
+              "milliseconds": 3781.62,
+              "outcome": "allowed"
+            },
+            {
+              "index": 23,
+              "milliseconds": 3713.231,
+              "outcome": "allowed"
+            },
+            {
+              "index": 24,
+              "milliseconds": 3686.299,
+              "outcome": "allowed"
+            },
+            {
+              "index": 25,
+              "milliseconds": 3320.619,
+              "outcome": "allowed"
+            },
+            {
+              "index": 26,
+              "milliseconds": 3280.549,
+              "outcome": "allowed"
+            },
+            {
+              "index": 27,
+              "milliseconds": 4083.762,
+              "outcome": "allowed"
+            },
+            {
+              "index": 28,
+              "milliseconds": 3711.782,
+              "outcome": "allowed"
+            },
+            {
+              "index": 29,
+              "milliseconds": 3714.119,
+              "outcome": "allowed"
+            },
+            {
+              "index": 30,
+              "milliseconds": 3676.47,
+              "outcome": "allowed"
+            },
+            {
+              "index": 31,
+              "milliseconds": 4011.772,
+              "outcome": "allowed"
+            },
+            {
+              "index": 32,
+              "milliseconds": 3793.754,
+              "outcome": "allowed"
+            },
+            {
+              "index": 33,
+              "milliseconds": 3800.715,
+              "outcome": "allowed"
+            },
+            {
+              "index": 34,
+              "milliseconds": 3896.202,
+              "outcome": "allowed"
+            },
+            {
+              "index": 35,
+              "milliseconds": 4203.222,
+              "outcome": "allowed"
+            },
+            {
+              "index": 36,
+              "milliseconds": 3905.322,
+              "outcome": "allowed"
+            },
+            {
+              "index": 37,
+              "milliseconds": 3709.296,
+              "outcome": "allowed"
+            },
+            {
+              "index": 38,
+              "milliseconds": 3905.094,
+              "outcome": "allowed"
+            },
+            {
+              "index": 39,
+              "milliseconds": 3285.149,
+              "outcome": "allowed"
+            },
+            {
+              "index": 40,
+              "milliseconds": 3496.745,
+              "outcome": "allowed"
+            },
+            {
+              "index": 41,
+              "milliseconds": 3412.85,
+              "outcome": "allowed"
+            },
+            {
+              "index": 42,
+              "milliseconds": 3306.053,
+              "outcome": "allowed"
+            },
+            {
+              "index": 43,
+              "milliseconds": 3700.775,
+              "outcome": "allowed"
+            },
+            {
+              "index": 44,
+              "milliseconds": 3485.083,
+              "outcome": "allowed"
+            },
+            {
+              "index": 45,
+              "milliseconds": 3411.469,
+              "outcome": "allowed"
+            },
+            {
+              "index": 46,
+              "milliseconds": 3396,
+              "outcome": "allowed"
+            },
+            {
+              "index": 47,
+              "milliseconds": 3100.727,
+              "outcome": "allowed"
+            },
+            {
+              "index": 48,
+              "milliseconds": 2093.898,
+              "outcome": "allowed"
+            },
+            {
+              "index": 49,
+              "milliseconds": 2011.693,
+              "outcome": "allowed"
+            }
+          ],
+          "passed": true
+        }
+      ]
+    }
+  ]
+}
